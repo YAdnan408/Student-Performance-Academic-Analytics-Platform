@@ -3,9 +3,15 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
-import { UserRole, Department } from '@/types/auth';
+import { UserRole, Department, Program } from '@/types/auth';
 import api from '@/lib/api';
 
+const degreeLevelOptions = ['undergraduate', 'postgraduate'];
+const instructorDegreeOptions = [
+  { value: 'undergraduate', label: 'Undergraduate Only' },
+  { value: 'postgraduate', label: 'Postgraduate Only' },
+  { value: 'undergraduate,postgraduate', label: 'Both Undergraduate and Postgraduate' },
+];
 const semesterOptions = [
   'Spring 25', 'Summer 25', 'Fall 25',
   'Spring 26', 'Summer 26', 'Fall 26',
@@ -25,11 +31,14 @@ const RegisterPage = () => {
     student_id: '',
     employee_id: '',
     department_code: '',
+    degree_level: '',
+    program_id: '',
     enrolled_semester: '',
     current_semester: '',
     designation: '',
   });
   const [departments, setDepartments] = useState<Department[]>([]);
+  const [programs, setPrograms] = useState<Program[]>([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -37,8 +46,30 @@ const RegisterPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-    api.get<Department[]>('/departments').then(res => setDepartments(res.data)).catch(() => {});
-  }, []);
+    if (formData.degree_level) {
+      api.get<Department[]>('/departments', { params: { degree_level: formData.degree_level } })
+        .then(res => setDepartments(res.data))
+        .catch(() => setDepartments([]));
+      setFormData(prev => ({ ...prev, department_code: '', program_id: '' }));
+    } else {
+      setDepartments([]);
+      setPrograms([]);
+    }
+  }, [formData.degree_level]);
+
+  useEffect(() => {
+    if (formData.degree_level && formData.department_code) {
+      const dept = departments.find(d => d.code === formData.department_code);
+      if (dept) {
+        api.get<Program[]>('/departments/programs', { params: { degree_level: formData.degree_level, department_id: dept.id } })
+          .then(res => setPrograms(res.data))
+          .catch(() => setPrograms([]));
+      }
+      setFormData(prev => ({ ...prev, program_id: '' }));
+    } else {
+      setPrograms([]);
+    }
+  }, [formData.degree_level, formData.department_code]);
 
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -79,10 +110,12 @@ const RegisterPage = () => {
         phone: formData.phone || undefined,
         address: formData.address || undefined,
         department_code: formData.department_code || undefined,
+        degree_level: formData.degree_level || undefined,
       };
 
       if (formData.role === 'student') {
         payload.student_id = formData.student_id;
+        payload.program_id = formData.program_id || undefined;
         payload.enrolled_semester = formData.enrolled_semester || undefined;
         payload.current_semester = formData.current_semester || undefined;
       } else if (formData.role === 'instructor') {
@@ -286,21 +319,29 @@ const RegisterPage = () => {
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-purple-200 mb-1.5">Phone Number</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-purple-300/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
-                        </svg>
-                      </div>
-                      <input type="tel" value={formData.phone}
-                        onChange={e => updateField('phone', e.target.value)}
-                        className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-purple-200/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
-                        placeholder="+1 (555) 123-4567" />
+                <div>
+                  <label className="block text-sm font-medium text-purple-200 mb-1.5">
+                    Degree Level {isInstructor ? '(select one or both)' : ''}
+                  </label>
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                      <svg className="w-5 h-5 text-purple-300/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
+                      </svg>
                     </div>
+                    <select value={formData.degree_level}
+                      onChange={e => updateField('degree_level', e.target.value)}
+                      className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all">
+                      <option value="" className="bg-slate-800">Select Degree Level</option>
+                      {(isInstructor ? instructorDegreeOptions : degreeLevelOptions.map(d => ({ value: d, label: d.charAt(0).toUpperCase() + d.slice(1) }))).map(opt => (
+                        <option key={opt.value} value={opt.value} className="bg-slate-800">{opt.label}</option>
+                      ))}
+                    </select>
                   </div>
+                </div>
+
+                {formData.degree_level && (
                   <div>
                     <label className="block text-sm font-medium text-purple-200 mb-1.5">Department</label>
                     <div className="relative">
@@ -319,14 +360,51 @@ const RegisterPage = () => {
                       </select>
                     </div>
                   </div>
-                </div>
+                )}
 
-                <div>
-                  <label className="block text-sm font-medium text-purple-200 mb-1.5">Address</label>
-                  <textarea value={formData.address} rows={2}
-                    onChange={e => updateField('address', e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-purple-200/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all resize-none"
-                    placeholder="123 University Ave, City, State" />
+                {isStudent && formData.department_code && formData.degree_level && (
+                  <div>
+                    <label className="block text-sm font-medium text-purple-200 mb-1.5">Program</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg className="w-5 h-5 text-purple-300/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                      </div>
+                      <select value={formData.program_id}
+                        onChange={e => updateField('program_id', e.target.value)}
+                        className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all">
+                        <option value="" className="bg-slate-800">Select Program</option>
+                        {programs.map(p => (
+                          <option key={p.id} value={p.id} className="bg-slate-800">{p.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-purple-200 mb-1.5">Phone Number</label>
+                    <div className="relative">
+                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                        <svg className="w-5 h-5 text-purple-300/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21l-2.257 1.13a11.042 11.042 0 005.516 5.516l1.13-2.257a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                        </svg>
+                      </div>
+                      <input type="tel" value={formData.phone}
+                        onChange={e => updateField('phone', e.target.value)}
+                        className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-purple-200/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
+                        placeholder="+1 (555) 123-4567" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-purple-200 mb-1.5">Address</label>
+                    <textarea value={formData.address} rows={2}
+                      onChange={e => updateField('address', e.target.value)}
+                      className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-purple-200/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all resize-none"
+                      placeholder="123 University Ave, City, State" />
+                  </div>
                 </div>
 
                 {isInstructor && (

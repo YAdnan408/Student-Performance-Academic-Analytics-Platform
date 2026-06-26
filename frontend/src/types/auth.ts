@@ -29,6 +29,8 @@ export interface RegisterRequest {
   student_id?: string;
   employee_id?: string;
   department_code?: string;
+  degree_level?: string;
+  program_id?: string;
   enrolled_semester?: string;
   current_semester?: string;
   designation?: string;
@@ -38,4 +40,11 @@ export interface Department {
   id: string;
   name: string;
   code: string;
+}
+
+export interface Program {
+  id: string;
+  name: string;
+  department_id: string;
+  degree_level: string;
 }

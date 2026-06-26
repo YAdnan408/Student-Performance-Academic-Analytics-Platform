@@ -23,8 +23,12 @@ def seed_departments_and_programs():
     from app.models.program import Program
     db = SessionLocal()
     try:
-        if db.query(Department).count() > 0:
+        if db.query(Program).count() > 0:
             return
+
+        db.query(Program).delete()
+        db.query(Department).delete()
+        db.commit()
 
         ug_depts = {
             "SDCS": Department(name="School of Data & Computational Sciences", code="SDCS"),

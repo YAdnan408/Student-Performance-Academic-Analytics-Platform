@@ -8,7 +8,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dev_password}
       POSTGRES_DB: ${POSTGRES_DB:-student_academics}
     ports:
-      - "5433:5432" # Host port 5433 to avoid conflict with your company DB
+      - "5434:5432" # Host port 5434 (changed from 5433 to avoid conflict)
     volumes:
       - postgres_data:/var/lib/postgresql/data
 

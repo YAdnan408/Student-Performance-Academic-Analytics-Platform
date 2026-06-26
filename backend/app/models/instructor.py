@@ -13,6 +13,7 @@ class Instructor(Base):
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id"))
+    degree_level = Column(String(50))
     designation = Column(String(100))
     phone = Column(String(20))
     address = Column(String)

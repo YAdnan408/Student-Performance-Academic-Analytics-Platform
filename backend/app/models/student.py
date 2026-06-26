@@ -13,6 +13,8 @@ class Student(Base):
     first_name = Column(String(100), nullable=False)
     last_name = Column(String(100), nullable=False)
     department_id = Column(UUID(as_uuid=True), ForeignKey("departments.id"))
+    degree_level = Column(String(20))
+    program_id = Column(UUID(as_uuid=True), ForeignKey("programs.id"))
     batch_year = Column(Integer)
     enrolled_semester = Column(String(20))
     current_semester = Column(String(20))
@@ -24,6 +26,7 @@ class Student(Base):
 
     user = relationship("User", back_populates="student")
     department = relationship("Department", back_populates="students")
+    program = relationship("Program", back_populates="students")
     enrollments = relationship("Enrollment", back_populates="student")
     grades = relationship("Grade", back_populates="student")
     gpa_records = relationship("GPARecord", back_populates="student")

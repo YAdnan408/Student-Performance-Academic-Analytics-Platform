@@ -3,6 +3,7 @@ from app.models.user import User
 from app.models.student import Student
 from app.models.instructor import Instructor
 from app.models.department import Department
+from app.models.program import Program
 from app.modules.auth.schema import UserCreate, RegisterRequest
 from app.modules.auth.interfaces import IAuthRepository
 from app.core.exceptions import AppException
@@ -16,6 +17,9 @@ class AuthRepository(IAuthRepository):
 
     def get_department_by_code(self, code: str) -> Department | None:
         return self.db.query(Department).filter(Department.code == code).first()
+
+    def get_program_by_id(self, program_id: str) -> Program | None:
+        return self.db.query(Program).filter(Program.id == program_id).first()
 
     def create_user(self, user_in: UserCreate, hashed_password: str) -> User:
         db_user = User(
@@ -35,12 +39,20 @@ class AuthRepository(IAuthRepository):
             if not department:
                 raise AppException(f"Department with code '{data.department_code}' not found")
 
+        program = None
+        if data.program_id:
+            program = self.get_program_by_id(data.program_id)
+            if not program:
+                raise AppException("Program not found")
+
         student = Student(
             user_id=user.id,
             student_id=data.student_id,
             first_name=data.first_name,
             last_name=data.last_name,
             department_id=department.id if department else None,
+            degree_level=data.degree_level,
+            program_id=program.id if program else None,
             phone=data.phone,
             address=data.address,
             enrolled_semester=data.enrolled_semester,
@@ -64,6 +76,7 @@ class AuthRepository(IAuthRepository):
             first_name=data.first_name,
             last_name=data.last_name,
             department_id=department.id if department else None,
+            degree_level=data.degree_level,
             designation=data.designation,
             phone=data.phone,
             address=data.address,

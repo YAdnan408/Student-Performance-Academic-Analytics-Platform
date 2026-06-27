@@ -1,6 +1,7 @@
 from fastapi import Request, FastAPI
 from fastapi.responses import JSONResponse
 from app.core.exceptions import AppException
+import traceback
 
 def add_exception_handlers(app: FastAPI):
     @app.exception_handler(AppException)
@@ -12,8 +13,8 @@ def add_exception_handlers(app: FastAPI):
 
     @app.exception_handler(Exception)
     async def general_exception_handler(request: Request, exc: Exception):
-        # In production, log this error
+        traceback.print_exc()
         return JSONResponse(
             status_code=500,
-            content={"detail": "Internal server error", "status": "error"}
+            content={"detail": str(exc), "status": "error"}
         )

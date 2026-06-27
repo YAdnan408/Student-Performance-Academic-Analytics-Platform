@@ -1,22 +1,9 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { authService } from '@/services/authService';
-import { UserRole, Department, Program } from '@/types/auth';
-import api from '@/lib/api';
-
-const degreeLevelOptions = ['undergraduate', 'postgraduate'];
-const instructorDegreeOptions = [
-  { value: 'undergraduate', label: 'Undergraduate Only' },
-  { value: 'postgraduate', label: 'Postgraduate Only' },
-  { value: 'undergraduate,postgraduate', label: 'Both Undergraduate and Postgraduate' },
-];
-const semesterOptions = [
-  'Spring 25', 'Summer 25', 'Fall 25',
-  'Spring 26', 'Summer 26', 'Fall 26',
-  'Spring 27', 'Summer 27', 'Fall 27',
-];
+import { UserRole } from '@/types/auth';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -30,53 +17,19 @@ const RegisterPage = () => {
     address: '',
     student_id: '',
     employee_id: '',
-    department_code: '',
-    degree_level: '',
-    program_id: '',
-    enrolled_semester: '',
-    current_semester: '',
     designation: '',
   });
-  const [departments, setDepartments] = useState<Department[]>([]);
-  const [programs, setPrograms] = useState<Program[]>([]);
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [step, setStep] = useState(1);
   const router = useRouter();
 
-  useEffect(() => {
-    if (formData.degree_level) {
-      api.get<Department[]>('/departments', { params: { degree_level: formData.degree_level } })
-        .then(res => setDepartments(res.data))
-        .catch(() => setDepartments([]));
-      setFormData(prev => ({ ...prev, department_code: '', program_id: '' }));
-    } else {
-      setDepartments([]);
-      setPrograms([]);
-    }
-  }, [formData.degree_level]);
-
-  useEffect(() => {
-    if (formData.degree_level && formData.department_code) {
-      const dept = departments.find(d => d.code === formData.department_code);
-      if (dept) {
-        api.get<Program[]>('/departments/programs', { params: { degree_level: formData.degree_level, department_id: dept.id } })
-          .then(res => setPrograms(res.data))
-          .catch(() => setPrograms([]));
-      }
-      setFormData(prev => ({ ...prev, program_id: '' }));
-    } else {
-      setPrograms([]);
-    }
-  }, [formData.degree_level, formData.department_code]);
-
   const updateField = (field: string, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async () => {
     setError('');
 
     if (formData.password !== formData.confirmPassword) {
@@ -109,15 +62,10 @@ const RegisterPage = () => {
         last_name: formData.last_name,
         phone: formData.phone || undefined,
         address: formData.address || undefined,
-        department_code: formData.department_code || undefined,
-        degree_level: formData.degree_level || undefined,
       };
 
       if (formData.role === 'student') {
         payload.student_id = formData.student_id;
-        payload.program_id = formData.program_id || undefined;
-        payload.enrolled_semester = formData.enrolled_semester || undefined;
-        payload.current_semester = formData.current_semester || undefined;
       } else if (formData.role === 'instructor') {
         payload.employee_id = formData.employee_id;
         payload.designation = formData.designation || undefined;
@@ -137,7 +85,6 @@ const RegisterPage = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
-      {/* Animated background orbs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-40 -left-40 w-80 h-80 bg-purple-500/20 rounded-full blur-3xl animate-pulse" />
         <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-blue-500/20 rounded-full blur-3xl animate-pulse delay-1000" />
@@ -145,7 +92,6 @@ const RegisterPage = () => {
       </div>
 
       <div className="relative w-full max-w-2xl px-4 py-8">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-blue-600 shadow-lg shadow-purple-500/25 mb-4">
             <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -156,16 +102,12 @@ const RegisterPage = () => {
           <p className="text-purple-200/70 mt-1">Join the Student Performance & Academic Analytics platform</p>
         </div>
 
-        {/* Steps indicator */}
         <div className="flex items-center justify-center gap-2 mb-6">
           <div className={`w-3 h-3 rounded-full transition-all duration-300 ${step === 1 ? 'bg-purple-400 scale-125' : 'bg-white/20'}`} />
           <div className="w-12 h-0.5 bg-white/20" />
           <div className={`w-3 h-3 rounded-full transition-all duration-300 ${step === 2 ? 'bg-purple-400 scale-125' : 'bg-white/20'}`} />
-          <div className="w-12 h-0.5 bg-white/20" />
-          <div className={`w-3 h-3 rounded-full transition-all duration-300 ${step === 3 ? 'bg-purple-400 scale-125' : 'bg-white/20'}`} />
         </div>
 
-        {/* Main card */}
         <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl shadow-2xl shadow-black/20 p-8">
           {error && (
             <div className="mb-6 flex items-center gap-3 bg-red-500/10 border border-red-500/20 text-red-300 rounded-xl px-4 py-3 text-sm">
@@ -176,8 +118,7 @@ const RegisterPage = () => {
             </div>
           )}
 
-          <form onSubmit={handleSubmit}>
-            {/* Step 1: Account Info */}
+          <form onSubmit={e => e.preventDefault()}>
             {step === 1 && (
               <div className="space-y-5 animate-fadeIn">
                 <h2 className="text-lg font-semibold text-white">Account Information</h2>
@@ -280,7 +221,6 @@ const RegisterPage = () => {
               </div>
             )}
 
-            {/* Step 2: Personal Details */}
             {step === 2 && (
               <div className="space-y-5 animate-fadeIn">
                 <h2 className="text-lg font-semibold text-white">Personal Details</h2>
@@ -315,70 +255,6 @@ const RegisterPage = () => {
                         onChange={e => updateField('employee_id', e.target.value.replace(/\D/g, '').slice(0, 8))}
                         className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-purple-200/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all"
                         placeholder="87654321" />
-                    </div>
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-sm font-medium text-purple-200 mb-1.5">
-                    Degree Level {isInstructor ? '(select one or both)' : ''}
-                  </label>
-                  <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                      <svg className="w-5 h-5 text-purple-300/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l6.16-3.422a12.083 12.083 0 01.665 6.479A11.952 11.952 0 0012 20.055a11.952 11.952 0 00-6.824-2.998 12.078 12.078 0 01.665-6.479L12 14z" />
-                      </svg>
-                    </div>
-                    <select value={formData.degree_level}
-                      onChange={e => updateField('degree_level', e.target.value)}
-                      className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all">
-                      <option value="" className="bg-slate-800">Select Degree Level</option>
-                      {(isInstructor ? instructorDegreeOptions : degreeLevelOptions.map(d => ({ value: d, label: d.charAt(0).toUpperCase() + d.slice(1) }))).map(opt => (
-                        <option key={opt.value} value={opt.value} className="bg-slate-800">{opt.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {formData.degree_level && (
-                  <div>
-                    <label className="block text-sm font-medium text-purple-200 mb-1.5">Department</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-purple-300/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
-                        </svg>
-                      </div>
-                      <select value={formData.department_code}
-                        onChange={e => updateField('department_code', e.target.value)}
-                        className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all">
-                        <option value="" className="bg-slate-800">Select Department</option>
-                        {departments.map(d => (
-                          <option key={d.id} value={d.code} className="bg-slate-800">{d.name}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
-
-                {isStudent && formData.department_code && formData.degree_level && (
-                  <div>
-                    <label className="block text-sm font-medium text-purple-200 mb-1.5">Program</label>
-                    <div className="relative">
-                      <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                        <svg className="w-5 h-5 text-purple-300/50" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                        </svg>
-                      </div>
-                      <select value={formData.program_id}
-                        onChange={e => updateField('program_id', e.target.value)}
-                        className="w-full pl-12 pr-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all">
-                        <option value="" className="bg-slate-800">Select Program</option>
-                        {programs.map(p => (
-                          <option key={p.id} value={p.id} className="bg-slate-800">{p.name}</option>
-                        ))}
-                      </select>
                     </div>
                   </div>
                 )}
@@ -419,54 +295,6 @@ const RegisterPage = () => {
               </div>
             )}
 
-            {/* Step 3: Semester Info (Student only) */}
-            {step === 3 && (
-              <div className="space-y-5 animate-fadeIn">
-                {isStudent && (
-                  <>
-                    <h2 className="text-lg font-semibold text-white">Academic Information</h2>
-
-                    <div>
-                      <label className="block text-sm font-medium text-purple-200 mb-1.5">Admission / Enrolled Semester</label>
-                      <select value={formData.enrolled_semester}
-                        onChange={e => updateField('enrolled_semester', e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all">
-                        <option value="" className="bg-slate-800">Select enrolled semester</option>
-                        {semesterOptions.map(s => (
-                          <option key={s} value={s} className="bg-slate-800">{s}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-purple-200 mb-1.5">Current Semester</label>
-                      <select value={formData.current_semester}
-                        onChange={e => updateField('current_semester', e.target.value)}
-                        className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white appearance-none focus:outline-none focus:ring-2 focus:ring-purple-500/50 focus:border-purple-500/50 transition-all">
-                        <option value="" className="bg-slate-800">Select current semester</option>
-                        {semesterOptions.map(s => (
-                          <option key={s} value={s} className="bg-slate-800">{s}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </>
-                )}
-
-                {!isStudent && (
-                  <div className="text-center py-8">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-green-500/10 mb-4">
-                      <svg className="w-8 h-8 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    </div>
-                    <h2 className="text-lg font-semibold text-white mb-1">Almost done!</h2>
-                    <p className="text-purple-200/60">Review your information and submit.</p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Navigation Buttons */}
             <div className="flex items-center justify-between mt-8 pt-6 border-t border-white/10">
               <div>
                 {step > 1 ? (
@@ -480,13 +308,13 @@ const RegisterPage = () => {
               </div>
 
               <div className="flex gap-3">
-                {step < 3 ? (
+                {step < 2 ? (
                   <button type="button" onClick={() => setStep(step + 1)}
                     className="px-8 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-500 hover:to-blue-500 rounded-xl shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40 transition-all duration-200">
                     Continue →
                   </button>
                 ) : (
-                  <button type="submit" disabled={isSubmitting}
+                  <button type="button" onClick={handleSubmit} disabled={isSubmitting}
                     className="px-8 py-2.5 text-sm font-medium text-white bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 rounded-xl shadow-lg shadow-green-500/25 hover:shadow-green-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed">
                     {isSubmitting ? (
                       <span className="flex items-center gap-2">
@@ -494,7 +322,7 @@ const RegisterPage = () => {
                           <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                           <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                         </svg>
-                        Creating Account...
+                        Create Account
                       </span>
                     ) : 'Create Account'}
                   </button>
@@ -504,7 +332,6 @@ const RegisterPage = () => {
           </form>
         </div>
 
-        {/* Login link */}
         <p className="text-center mt-6 text-purple-200/50 text-sm">
           Already have an account?{' '}
           <a href="/login" className="text-purple-300 hover:text-purple-200 underline underline-offset-2 transition-colors">

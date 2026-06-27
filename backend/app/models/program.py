@@ -14,4 +14,3 @@ class Program(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     department = relationship("Department", back_populates="programs")
-    students = relationship("Student", back_populates="program")

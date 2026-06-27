@@ -1,9 +1,18 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from app.core.error_handlers import add_exception_handlers
 from app.modules.auth.router import router as auth_router
 from app.modules.departments.router import router as departments_router
 
 app = FastAPI(title="Student Academics API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Add global exception handlers
 add_exception_handlers(app)
@@ -18,9 +27,13 @@ async def root():
 
 @app.on_event("startup")
 def seed_departments_and_programs():
-    from app.core.database import SessionLocal
+    from app.core.database import SessionLocal, engine
     from app.models.department import Department
     from app.models.program import Program
+    from sqlalchemy import inspect
+    inspector = inspect(engine)
+    if not inspector.has_table("programs"):
+        return
     db = SessionLocal()
     try:
         if db.query(Program).count() > 0:

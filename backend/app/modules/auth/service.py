@@ -31,5 +31,8 @@ class AuthService(IAuthService):
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "token_type": "bearer"
+            "token_type": "bearer",
+            "role": user.role,
+            "id": str(user.id),
+            "email": user.email,
         }

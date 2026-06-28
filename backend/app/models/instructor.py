@@ -15,6 +15,7 @@ class Instructor(Base):
     designation = Column(String(100))
     phone = Column(String(20))
     address = Column(String)
+    profile_photo = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -16,3 +16,4 @@ from .recommendation import Recommendation
 from .report import Report
 from .department_analytics import DepartmentAnalytics
 from .program import Program
+from .payment import Payment

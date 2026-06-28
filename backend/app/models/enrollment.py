@@ -17,3 +17,4 @@ class Enrollment(Base):
     student = relationship("Student", back_populates="enrollments")
     course_offering = relationship("CourseOffering", back_populates="enrollments")
     attendance_records = relationship("Attendance", back_populates="enrollment")
+    payment = relationship("Payment", back_populates="enrollment", uselist=False)

@@ -39,14 +39,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const login = async (data: LoginRequest) => {
-    const { access_token } = await authService.login(data);
+    const { access_token, refresh_token, role, id, email } = await authService.login(data);
     localStorage.setItem('token', access_token);
-    const userData = await authService.getMe();
+    localStorage.setItem('refresh_token', refresh_token);
+
+    const userData: UserResponse = { id, email, role, is_active: true, created_at: new Date().toISOString() };
     setUser(userData);
     
     // Redirect based on role
-    if (userData.role === 'admin') router.push('/admin');
-    else if (userData.role === 'instructor') router.push('/instructor');
+    if (role === 'admin') router.push('/admin');
+    else if (role === 'instructor') router.push('/instructor');
     else router.push('/student');
   };
 

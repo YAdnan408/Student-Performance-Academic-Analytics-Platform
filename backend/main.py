@@ -1,8 +1,11 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from app.core.error_handlers import add_exception_handlers
 from app.modules.auth.router import router as auth_router
 from app.modules.departments.router import router as departments_router
+from app.modules.profile.router import router as profile_router
+import os
 
 app = FastAPI(title="Student Academics API")
 
@@ -20,6 +23,12 @@ add_exception_handlers(app)
 # Register routers
 app.include_router(auth_router)
 app.include_router(departments_router)
+app.include_router(profile_router)
+
+# Mount uploads directory for static file serving
+uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")
+os.makedirs(uploads_dir, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=uploads_dir), name="uploads")
 
 @app.get("/")
 async def root():

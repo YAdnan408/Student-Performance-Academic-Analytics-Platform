@@ -9,9 +9,11 @@ from app.modules.auth.exceptions import InvalidTokenException, UserDisabledExcep
 from app.modules.auth.schema import TokenData
 from app.modules.auth.repository import AuthRepository
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login", auto_error=False)
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def get_current_user(token: str | None = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+    if token is None:
+        raise InvalidTokenException()
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         email: str = payload.get("sub")

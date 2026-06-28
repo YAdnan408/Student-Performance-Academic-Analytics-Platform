@@ -1,10 +1,12 @@
 from fastapi import APIRouter, Depends, status
+from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 from app.core.database import get_db
-from app.modules.auth.schema import Token, UserCreate, UserResponse, LoginRequest, RegisterRequest
+from app.core.config import settings
+from app.modules.auth.schema import Token, UserCreate, UserResponse, LoginRequest, RegisterRequest, RefreshRequest
 from app.modules.auth.repository import AuthRepository
 from app.modules.auth.service import AuthService
-from app.modules.auth.exceptions import EmailAlreadyExistsException
+from app.modules.auth.exceptions import EmailAlreadyExistsException, InvalidTokenException
 from app.modules.auth.dependencies import get_current_user
 from app.models.user import User
 from app.models.enums import UserRole
@@ -42,6 +44,26 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)):
     service = AuthService(repository)
 
     user = service.authenticate_user(login_data.email, login_data.password)
+    return service.create_tokens(user)
+
+@router.post("/refresh", response_model=Token)
+def refresh(data: RefreshRequest, db: Session = Depends(get_db)):
+    try:
+        payload = jwt.decode(data.refresh_token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
+        if payload.get("type") != "refresh":
+            raise InvalidTokenException()
+        email = payload.get("sub")
+        if email is None:
+            raise InvalidTokenException()
+    except JWTError:
+        raise InvalidTokenException()
+
+    repository = AuthRepository(db)
+    user = repository.get_by_email(email)
+    if user is None or not user.is_active:
+        raise InvalidTokenException()
+
+    service = AuthService(repository)
     return service.create_tokens(user)
 
 @router.get("/me", response_model=UserResponse)

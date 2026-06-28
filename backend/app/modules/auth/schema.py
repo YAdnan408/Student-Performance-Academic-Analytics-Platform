@@ -7,6 +7,9 @@ class Token(BaseModel):
     access_token: str
     refresh_token: str
     token_type: str
+    role: UserRole
+    id: UUID
+    email: EmailStr
 
 class TokenData(BaseModel):
     email: str | None = None
@@ -23,6 +26,7 @@ class UserResponse(UserBase):
     id: UUID
     is_active: bool
     created_at: datetime
+    updated_at: datetime | None = None
 
     class Config:
         from_attributes = True
@@ -30,6 +34,9 @@ class UserResponse(UserBase):
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
 
 class RegisterRequest(BaseModel):
     email: EmailStr

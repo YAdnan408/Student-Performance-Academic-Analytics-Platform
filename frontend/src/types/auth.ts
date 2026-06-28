@@ -10,7 +10,11 @@ export interface UserResponse {
 
 export interface AuthResponse {
   access_token: string;
+  refresh_token: string;
   token_type: string;
+  role: UserRole;
+  id: string;
+  email: string;
 }
 
 export interface LoginRequest {

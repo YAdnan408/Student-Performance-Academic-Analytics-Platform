@@ -18,7 +18,6 @@ class AcademicRepository(IAcademicRepository):
         return (
             db.query(Course)
             .options(joinedload(Course.offerings).joinedload(CourseOffering.instructor))
-            .options(joinedload(Course.department))
             .all()
         )
 
@@ -26,7 +25,6 @@ class AcademicRepository(IAcademicRepository):
         return (
             db.query(Course)
             .options(joinedload(Course.offerings).joinedload(CourseOffering.instructor))
-            .options(joinedload(Course.department))
             .filter(Course.id == course_id)
             .first()
         )
@@ -52,6 +50,28 @@ class AcademicRepository(IAcademicRepository):
             )
             .first()
         )
+
+    def check_student_enrolled(self, db: Session, user_id: str, course_id: str) -> bool:
+        student = db.query(Student).filter(Student.user_id == user_id).first()
+        if not student:
+            return False
+        offering = (
+            db.query(CourseOffering)
+            .filter(CourseOffering.course_id == course_id)
+            .first()
+        )
+        if not offering:
+            return False
+        enrollment = (
+            db.query(Enrollment)
+            .filter(
+                Enrollment.student_id == student.id,
+                Enrollment.course_offering_id == offering.id,
+                Enrollment.status.in_(["active", "completed"]),
+            )
+            .first()
+        )
+        return enrollment is not None
 
     def create_enrollment(self, db: Session, student_id: str, course_offering_id: str) -> Enrollment:
         enrollment = Enrollment(
@@ -84,6 +104,17 @@ class AcademicRepository(IAcademicRepository):
                 .joinedload(CourseOffering.course),
                 joinedload(Enrollment.course_offering)
                 .joinedload(CourseOffering.instructor),
+            )
+            .filter(Enrollment.student_id == student_id, Enrollment.status == "active")
+            .all()
+        )
+
+    def get_student_enrollments_with_courses(self, db: Session, student_id: str) -> list:
+        return (
+            db.query(Enrollment)
+            .options(
+                joinedload(Enrollment.course_offering)
+                .joinedload(CourseOffering.course),
             )
             .filter(Enrollment.student_id == student_id, Enrollment.status == "active")
             .all()

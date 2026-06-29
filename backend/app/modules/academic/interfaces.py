@@ -30,6 +30,10 @@ class IAcademicRepository(ABC):
         pass
 
     @abstractmethod
+    def check_student_enrolled(self, db: Session, user_id: str, course_id: str) -> bool:
+        pass
+
+    @abstractmethod
     def create_enrollment(self, db: Session, student_id: str, course_offering_id: str) -> Enrollment:
         pass
 
@@ -39,6 +43,10 @@ class IAcademicRepository(ABC):
 
     @abstractmethod
     def get_student_enrollments(self, db: Session, student_id: str) -> list:
+        pass
+
+    @abstractmethod
+    def get_student_enrollments_with_courses(self, db: Session, student_id: str) -> list:
         pass
 
     @abstractmethod

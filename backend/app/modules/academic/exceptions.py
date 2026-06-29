@@ -14,3 +14,8 @@ class StudentProfileNotFoundException(AppException):
 class AlreadyEnrolledException(AppException):
     def __init__(self, message: str = "You are already enrolled in this course"):
         super().__init__(message, status_code=409)
+
+
+class ScheduleClashException(AppException):
+    def __init__(self, message: str = "Schedule clash detected with an existing course"):
+        super().__init__(message, status_code=409)

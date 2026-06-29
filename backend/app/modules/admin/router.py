@@ -9,6 +9,7 @@ from app.models.course_offering import CourseOffering
 from app.models.semester import Semester
 from app.models.instructor import Instructor
 from app.models.student import Student
+from app.models.enums import CourseStatus
 from app.modules.admin.schema import CourseCreateRequest, CourseUpdateRequest, AssignInstructorRequest
 from app.core.exceptions import NotFoundException
 from datetime import date
@@ -37,12 +38,13 @@ def admin_list_courses(
             "course_code": course.course_code,
             "title": course.title,
             "description": course.description,
-            "credit_hours": course.credit_hours,
             "cost": course.cost,
             "duration": course.duration,
             "start_date": str(course.start_date) if course.start_date else None,
             "end_date": str(course.end_date) if course.end_date else None,
             "marks_distribution": course.marks_distribution,
+            "class_schedule": course.class_schedule,
+            "status": course.status,
             "instructor_name": instructor_name,
         })
     return result
@@ -58,13 +60,12 @@ def admin_create_course(
         course_code=request.course_code,
         title=request.title,
         description=request.description,
-        credit_hours=request.credit_hours,
         cost=request.cost,
         duration=request.duration,
         start_date=date.fromisoformat(request.start_date) if request.start_date else None,
         end_date=date.fromisoformat(request.end_date) if request.end_date else None,
         marks_distribution=request.marks_distribution,
-        department_id=request.department_id,
+        class_schedule=request.class_schedule,
     )
     db.add(course)
     db.commit()
@@ -94,8 +95,6 @@ def admin_update_course(
         course.title = request.title
     if request.description is not None:
         course.description = request.description
-    if request.credit_hours is not None:
-        course.credit_hours = request.credit_hours
     if request.cost is not None:
         course.cost = request.cost
     if request.duration is not None:
@@ -106,8 +105,8 @@ def admin_update_course(
         course.end_date = date.fromisoformat(request.end_date)
     if request.marks_distribution is not None:
         course.marks_distribution = request.marks_distribution
-    if request.department_id is not None:
-        course.department_id = request.department_id
+    if request.class_schedule is not None:
+        course.class_schedule = request.class_schedule
 
     db.commit()
     db.refresh(course)
@@ -133,6 +132,52 @@ def admin_delete_course(
     db.delete(course)
     db.commit()
     return {"message": "Course deleted successfully"}
+
+
+@router.post("/courses/{course_id}/renew")
+def admin_renew_course(
+    course_id: str,
+    db: Session = Depends(get_db),
+    user: User = Depends(admin_only),
+):
+    course = db.query(Course).filter(Course.id == course_id).first()
+    if not course:
+        raise NotFoundException("Course not found")
+
+    if course.status != CourseStatus.archived.value:
+        return {"message": "Course is not in archived state", "status": course.status}
+
+    course.status = CourseStatus.active.value
+    db.commit()
+    db.refresh(course)
+    return {
+        "id": str(course.id),
+        "title": course.title,
+        "status": course.status,
+        "message": "Course renewed successfully",
+    }
+
+
+@router.get("/courses/archived")
+def admin_list_archived_courses(
+    db: Session = Depends(get_db),
+    user: User = Depends(admin_only),
+):
+    courses = db.query(Course).filter(Course.status == CourseStatus.archived.value).order_by(Course.created_at.desc()).all()
+    result = []
+    for course in courses:
+        result.append({
+            "id": str(course.id),
+            "course_code": course.course_code,
+            "title": course.title,
+            "description": course.description,
+            "cost": course.cost,
+            "duration": course.duration,
+            "start_date": str(course.start_date) if course.start_date else None,
+            "end_date": str(course.end_date) if course.end_date else None,
+            "status": course.status,
+        })
+    return result
 
 
 @router.get("/instructors")
@@ -204,7 +249,6 @@ def admin_assign_instructor(
         course_id=request.course_id,
         instructor_id=request.instructor_id,
         semester_id=semester.id,
-        section=request.section or "1",
     )
     db.add(offering)
     db.commit()

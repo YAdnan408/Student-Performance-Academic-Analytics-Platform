@@ -26,7 +26,7 @@ def get_course_detail(
     service: AcademicService = Depends(get_academic_service),
     user: User = Depends(get_current_user),
 ):
-    return service.get_course_detail(db, course_id)
+    return service.get_course_detail(db, course_id, str(user.id))
 
 
 @router.post("/enroll")

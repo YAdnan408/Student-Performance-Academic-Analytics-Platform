@@ -30,22 +30,16 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
   if (!isOpen) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ padding: '16px' }}
-    >
+    <div className="fixed inset-0 z-50 flex items-start justify-center">
+      {/* Backdrop — absolute inside the fixed container so positioning works correctly */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        className="absolute inset-0 bg-black/50 backdrop-blur-md"
         onClick={onClose}
       />
+      {/* Modal box */}
       <div
-        className="relative w-full max-w-lg bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl p-6"
-        style={{
-          maxHeight: 'min(85vh, 640px)',
-          marginTop: '5vh',
-          display: 'flex',
-          flexDirection: 'column',
-        }}
+        className="relative w-full max-w-lg flex flex-col bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl p-6"
+        style={{ maxHeight: 'calc(70vh - 0.5rem)' }}
       >
         {title && (
           <div className="flex items-center justify-between mb-4 shrink-0">
@@ -60,10 +54,7 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
             </button>
           </div>
         )}
-        <div
-          className="overflow-y-auto overflow-x-hidden"
-          style={{ minHeight: 0 }}
-        >
+        <div className="overflow-y-auto overflow-x-hidden flex-1" style={{ minHeight: 0 }}>
           {children}
         </div>
       </div>

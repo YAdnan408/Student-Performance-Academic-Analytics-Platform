@@ -56,6 +56,7 @@ export interface MyCourseItem {
     start_date: string | null;
     end_date: string | null;
     status: string;
+    class_schedule: Record<string, string> | null;
   };
   instructor_name: string | null;
 }

@@ -111,6 +111,38 @@ class AcademicService:
             } if instructor else None,
         }
 
+    def check_schedule_clash(self, db: Session, user_id: str, course_id: str) -> dict:
+        student = self.repository.get_student_by_user_id(db, user_id)
+        if not student:
+            raise StudentProfileNotFoundException()
+
+        course = self.repository.get_course_by_id(db, course_id)
+        if not course:
+            raise CourseNotFoundException()
+
+        if not course.class_schedule or not course.class_schedule.get("days") or not course.class_schedule.get("time_slot"):
+            return {"has_clash": False, "conflicting_course": None}
+
+        new_days = course.class_schedule["days"]
+        new_time = course.class_schedule["time_slot"]
+
+        active_enrollments = self.repository.get_student_enrollments_with_courses(db, str(student.id))
+        for enrollment in active_enrollments:
+            enrolled_course = enrollment.course_offering.course
+            if not enrolled_course.class_schedule:
+                continue
+            if (enrolled_course.class_schedule.get("days") == new_days and
+                enrolled_course.class_schedule.get("time_slot") == new_time):
+                return {
+                    "has_clash": True,
+                    "conflicting_course": enrolled_course.title,
+                    "conflicting_course_code": enrolled_course.course_code,
+                    "days": new_days,
+                    "time_slot": new_time,
+                }
+
+        return {"has_clash": False, "conflicting_course": None}
+
     def enroll_student(self, db: Session, user_id: str, course_id: str, payment_method: str) -> dict:
         student = self.repository.get_student_by_user_id(db, user_id)
         if not student:
@@ -187,6 +219,7 @@ class AcademicService:
                     "start_date": str(course.start_date) if course.start_date else None,
                     "end_date": str(course.end_date) if course.end_date else None,
                     "status": course.status,
+                    "class_schedule": course.class_schedule,
                 },
                 "instructor_name": f"{instructor.first_name} {instructor.last_name}" if instructor else None,
             })

@@ -5,6 +5,10 @@ class UserRole(str, enum.Enum):
     instructor = "instructor"
     admin = "admin"
 
+class CourseStatus(str, enum.Enum):
+    active = "active"
+    archived = "archived"
+
 class EnrollmentStatus(str, enum.Enum):
     active = "active"
     dropped = "dropped"

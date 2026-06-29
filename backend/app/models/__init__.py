@@ -1,4 +1,4 @@
-from .enums import UserRole, EnrollmentStatus, AttendanceStatus, AssessmentType
+from .enums import UserRole, CourseStatus, EnrollmentStatus, AttendanceStatus, AssessmentType
 from .user import User
 from .department import Department
 from .student import Student

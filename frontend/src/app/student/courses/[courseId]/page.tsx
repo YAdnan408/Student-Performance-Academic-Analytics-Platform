@@ -16,6 +16,8 @@ const CourseDetailPage = () => {
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [clashError, setClashError] = useState<string | null>(null);
+  const [checkingClash, setCheckingClash] = useState(false);
 
   useEffect(() => {
     if (params.courseId) {
@@ -32,6 +34,26 @@ const CourseDetailPage = () => {
       setError(err instanceof Error ? err.message : 'Failed to load course details');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleEnrollClick = async () => {
+    if (!course) return;
+    setClashError(null);
+    setCheckingClash(true);
+    try {
+      const result = await courseService.checkScheduleClash(course.id);
+      if (result.has_clash) {
+        setClashError(
+          `Schedule clash: ${course.title} conflicts with ${result.conflicting_course} (${result.conflicting_course_code}) — both are on ${result.days}, ${result.time_slot}`
+        );
+      } else {
+        router.push(`/student/courses/${course.id}/enroll`);
+      }
+    } catch (err: unknown) {
+      setClashError(err instanceof Error ? err.message : 'Failed to check schedule');
+    } finally {
+      setCheckingClash(false);
     }
   };
 
@@ -208,11 +230,22 @@ const CourseDetailPage = () => {
               <Button
                 className="w-full"
                 size="lg"
-                onClick={() => router.push(`/student/courses/${course.id}/enroll`)}
+                onClick={handleEnrollClick}
+                loading={checkingClash}
                 disabled={course.is_enrolled || course.status === 'archived'}
               >
                 {course.is_enrolled ? 'Already Enrolled' : course.status === 'archived' ? 'Course Archived' : 'Enroll Now'}
               </Button>
+              {clashError && (
+                <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
+                  <div className="flex items-start gap-2">
+                    <svg className="w-4 h-4 text-red-400 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+                    </svg>
+                    <p className="text-xs text-red-400">{clashError}</p>
+                  </div>
+                </div>
+              )}
               {course.is_enrolled && (
                 <p className="text-xs text-emerald-400/70 text-center mt-2">
                   You are already enrolled in this course

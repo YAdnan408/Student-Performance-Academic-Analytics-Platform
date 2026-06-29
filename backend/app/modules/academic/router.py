@@ -29,6 +29,16 @@ def get_course_detail(
     return service.get_course_detail(db, course_id, str(user.id))
 
 
+@router.post("/check-clash")
+def check_schedule_clash(
+    request: EnrollRequest,
+    db: Session = Depends(get_db),
+    service: AcademicService = Depends(get_academic_service),
+    user: User = Depends(get_current_user),
+):
+    return service.check_schedule_clash(db, str(user.id), request.course_id)
+
+
 @router.post("/enroll")
 def enroll_course(
     request: EnrollRequest,

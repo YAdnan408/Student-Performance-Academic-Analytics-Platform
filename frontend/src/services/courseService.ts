@@ -20,6 +20,11 @@ export const courseService = {
     return response.data;
   },
 
+  async checkScheduleClash(courseId: string): Promise<{ has_clash: boolean; conflicting_course?: string; conflicting_course_code?: string; days?: string; time_slot?: string }> {
+    const response = await api.post<{ has_clash: boolean; conflicting_course?: string; conflicting_course_code?: string; days?: string; time_slot?: string }>('/academic/check-clash', { course_id: courseId });
+    return response.data;
+  },
+
   async getMyCourses(): Promise<MyCourseItem[]> {
     const response = await api.get<MyCourseItem[]>('/academic/my-courses');
     return response.data;

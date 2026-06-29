@@ -28,12 +28,13 @@ export interface AdminCourse {
   course_code: string;
   title: string;
   description: string;
-  credit_hours: number;
   cost: number;
   duration: string;
   start_date: string | null;
   end_date: string | null;
   marks_distribution: Record<string, number> | null;
+  class_schedule: Record<string, string> | null;
+  status: string;
   instructor_name: string | null;
 }
 
@@ -41,7 +42,6 @@ export interface CourseCreateData {
   course_code: string;
   title: string;
   description: string;
-  credit_hours: number;
   cost: number;
   duration: string;
   start_date: string;
@@ -53,5 +53,9 @@ export interface CourseCreateData {
     assignments: number;
     lab: number;
     attendance: number;
+  };
+  class_schedule?: {
+    days: string;
+    time_slot: string;
   };
 }

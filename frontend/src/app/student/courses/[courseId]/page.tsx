@@ -93,7 +93,9 @@ const CourseDetailPage = () => {
                   <h1 className="text-2xl font-bold text-white">{course.title}</h1>
                   <p className="text-sm text-purple-200/50 font-mono mt-1">{course.course_code}</p>
                 </div>
-                <Badge variant="info">{course.credit_hours} Credit Hours</Badge>
+                <Badge variant={course.status === 'archived' ? 'danger' : 'success'}>
+                  {course.status === 'archived' ? 'Archived' : 'Active'}
+                </Badge>
               </div>
               <div>
                 <h3 className="text-sm font-semibold text-purple-200 mb-2">Course Description</h3>
@@ -149,17 +151,21 @@ const CourseDetailPage = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
-                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-rose-500 to-pink-600 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                    </svg>
+                {course.class_schedule && (
+                  <div className="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                    <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-600 flex items-center justify-center">
+                      <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="text-xs text-purple-200/50">Class Schedule</p>
+                      <p className="text-sm font-medium text-white">
+                        {course.class_schedule.days || 'TBD'} {course.class_schedule.time_slot ? `(${course.class_schedule.time_slot})` : ''}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-xs text-purple-200/50">Department</p>
-                    <p className="text-sm font-medium text-white">{course.department || 'N/A'}</p>
-                  </div>
-                </div>
+                )}
               </div>
             </Card>
 
@@ -203,9 +209,20 @@ const CourseDetailPage = () => {
                 className="w-full"
                 size="lg"
                 onClick={() => router.push(`/student/courses/${course.id}/enroll`)}
+                disabled={course.is_enrolled || course.status === 'archived'}
               >
-                Enroll Now
+                {course.is_enrolled ? 'Already Enrolled' : course.status === 'archived' ? 'Course Archived' : 'Enroll Now'}
               </Button>
+              {course.is_enrolled && (
+                <p className="text-xs text-emerald-400/70 text-center mt-2">
+                  You are already enrolled in this course
+                </p>
+              )}
+              {course.status === 'archived' && !course.is_enrolled && (
+                <p className="text-xs text-amber-400/70 text-center mt-2">
+                  This course is no longer available
+                </p>
+              )}
               <p className="text-xs text-purple-200/40 text-center mt-3">
                 Secure payment via Stripe, Banking, or Mobile Wallet
               </p>

@@ -17,6 +17,16 @@ export const adminService = {
     return response.data;
   },
 
+  async renewCourse(courseId: string): Promise<{ id: string; title: string; status: string; message: string }> {
+    const response = await api.post<{ id: string; title: string; status: string; message: string }>(`/admin/courses/${courseId}/renew`);
+    return response.data;
+  },
+
+  async listArchivedCourses(): Promise<AdminCourse[]> {
+    const response = await api.get<AdminCourse[]>('/admin/courses/archived');
+    return response.data;
+  },
+
   async listInstructors(): Promise<AdminInstructor[]> {
     const response = await api.get<AdminInstructor[]>('/admin/instructors');
     return response.data;

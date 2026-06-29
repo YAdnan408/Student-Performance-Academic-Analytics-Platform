@@ -13,6 +13,21 @@ import { AdminCourse, AdminInstructor, AdminUser, CourseCreateData } from '@/typ
 
 type Tab = 'courses' | 'users';
 
+const DAYS_OPTIONS = [
+  'Sunday-Tuesday',
+  'Monday-Wednesday',
+  'Thursday-Saturday',
+];
+
+const TIME_SLOTS = [
+  '8:00-9:20am',
+  '9:30am-10:50am',
+  '11:00am-12:20pm',
+  '12:30-1:50pm',
+  '2:00-3:20pm',
+  '3:30-4:50pm',
+];
+
 const AdminDashboardPage = () => {
   const { user, loading: authLoading, logout } = useAuth();
   const [activeTab, setActiveTab] = useState<Tab>('courses');
@@ -71,6 +86,8 @@ const CoursesTab = () => {
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showArchivedModal, setShowArchivedModal] = useState(false);
+  const [archivedCourses, setArchivedCourses] = useState<AdminCourse[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<AdminCourse | null>(null);
   const [assignInstructorId, setAssignInstructorId] = useState('');
 
@@ -104,6 +121,16 @@ const CoursesTab = () => {
     }
   };
 
+  const handleRenew = async (courseId: string) => {
+    try {
+      await adminService.renewCourse(courseId);
+      loadData();
+      setArchivedCourses(prev => prev.filter(c => c.id !== courseId));
+    } catch (err) {
+      console.error('Failed to renew course', err);
+    }
+  };
+
   const handleAssign = async () => {
     if (!selectedCourse || !assignInstructorId) return;
     try {
@@ -117,16 +144,36 @@ const CoursesTab = () => {
     }
   };
 
+  const openArchivedModal = async () => {
+    try {
+      const data = await adminService.listArchivedCourses();
+      setArchivedCourses(data);
+      setShowArchivedModal(true);
+    } catch (err) {
+      console.error('Failed to load archived courses', err);
+    }
+  };
+
+  const archivedCount = courses.filter(c => c.status === 'archived').length;
+
   return (
     <div className="animate-fadeIn">
       <div className="flex justify-between items-center mb-6">
         <h2 className="text-xl font-semibold">All Courses ({courses.length})</h2>
-        <Button onClick={() => setShowAddModal(true)}>
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-          </svg>
-          Add Course
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={openArchivedModal}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
+            </svg>
+            Archived ({archivedCount})
+          </Button>
+          <Button onClick={() => setShowAddModal(true)}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Add Course
+          </Button>
+        </div>
       </div>
 
       {loading ? (
@@ -148,6 +195,9 @@ const CoursesTab = () => {
                     <span className="text-xs bg-white/10 text-purple-200/70 px-2 py-0.5 rounded-full font-mono">
                       {course.course_code}
                     </span>
+                    <Badge variant={course.status === 'archived' ? 'danger' : 'success'}>
+                      {course.status === 'archived' ? 'Archived' : 'Active'}
+                    </Badge>
                   </div>
                   <p className="text-sm text-purple-200/60 line-clamp-1 mb-2">{course.description}</p>
                   <div className="flex items-center gap-4 text-xs text-purple-200/50">
@@ -157,6 +207,15 @@ const CoursesTab = () => {
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
+                  {course.status === 'archived' && (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => handleRenew(course.id)}
+                    >
+                      Renew
+                    </Button>
+                  )}
                   <Button
                     variant="outline"
                     size="sm"
@@ -213,6 +272,30 @@ const CoursesTab = () => {
           </div>
         </div>
       </Modal>
+
+      <Modal
+        isOpen={showArchivedModal}
+        onClose={() => setShowArchivedModal(false)}
+        title="Archived Courses"
+      >
+        <div className="space-y-3">
+          {archivedCourses.length === 0 ? (
+            <p className="text-purple-200/40 text-center py-4">No archived courses.</p>
+          ) : (
+            archivedCourses.map((course) => (
+              <div key={course.id} className="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+                <div>
+                  <p className="text-sm font-medium text-white">{course.title}</p>
+                  <p className="text-xs text-purple-200/50">{course.course_code}</p>
+                </div>
+                <Button size="sm" onClick={() => handleRenew(course.id)}>
+                  Renew
+                </Button>
+              </div>
+            ))
+          )}
+        </div>
+      </Modal>
     </div>
   );
 };
@@ -230,12 +313,12 @@ const AddCourseModal = ({
     course_code: '',
     title: '',
     description: '',
-    credit_hours: 3,
     cost: 0,
     duration: '16 weeks',
     start_date: '',
     end_date: '',
     marks_distribution: { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
+    class_schedule: { days: '', time_slot: '' },
   });
   const [instructors, setInstructors] = useState<AdminInstructor[]>([]);
   const [selectedInstructorId, setSelectedInstructorId] = useState('');
@@ -251,7 +334,11 @@ const AddCourseModal = ({
     if (!form.course_code || !form.title) return;
     setSubmitting(true);
     try {
-      const result = await adminService.createCourse(form);
+      const payload = { ...form };
+      if (!payload.class_schedule?.days && !payload.class_schedule?.time_slot) {
+        delete payload.class_schedule;
+      }
+      const result = await adminService.createCourse(payload);
       if (selectedInstructorId) {
         await adminService.assignInstructor(result.id, selectedInstructorId);
       }
@@ -261,12 +348,12 @@ const AddCourseModal = ({
         course_code: '',
         title: '',
         description: '',
-        credit_hours: 3,
         cost: 0,
         duration: '16 weeks',
         start_date: '',
         end_date: '',
         marks_distribution: { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
+        class_schedule: { days: '', time_slot: '' },
       });
       setSelectedInstructorId('');
     } catch (err) {
@@ -310,23 +397,17 @@ const AddCourseModal = ({
         </div>
         <div className="grid grid-cols-2 gap-4">
           <Input
-            label="Credit Hours"
-            type="number"
-            value={String(form.credit_hours)}
-            onChange={(e) => setForm({ ...form, credit_hours: parseInt(e.target.value) || 0 })}
-          />
-          <Input
             label="Cost (৳)"
             type="number"
             value={String(form.cost)}
             onChange={(e) => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })}
           />
+          <Input
+            label="Duration"
+            value={form.duration}
+            onChange={(e) => setForm({ ...form, duration: e.target.value })}
+          />
         </div>
-        <Input
-          label="Duration"
-          value={form.duration}
-          onChange={(e) => setForm({ ...form, duration: e.target.value })}
-        />
         <div className="grid grid-cols-2 gap-4">
           <Input
             label="Start Date"
@@ -340,6 +421,38 @@ const AddCourseModal = ({
             value={form.end_date}
             onChange={(e) => setForm({ ...form, end_date: e.target.value })}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-purple-200 mb-1.5">Class Schedule</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-purple-200/50 mb-1">Days</label>
+              <select
+                value={form.class_schedule?.days || ''}
+                onChange={(e) => setForm({ ...form, class_schedule: { ...form.class_schedule!, days: e.target.value, time_slot: form.class_schedule?.time_slot || '' } })}
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              >
+                <option value="" className="bg-slate-900">Select days</option>
+                {DAYS_OPTIONS.map((days) => (
+                  <option key={days} value={days} className="bg-slate-900">{days}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-purple-200/50 mb-1">Time Slot</label>
+              <select
+                value={form.class_schedule?.time_slot || ''}
+                onChange={(e) => setForm({ ...form, class_schedule: { ...form.class_schedule!, days: form.class_schedule?.days || '', time_slot: e.target.value } })}
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              >
+                <option value="" className="bg-slate-900">Select time</option>
+                {TIME_SLOTS.map((slot) => (
+                  <option key={slot} value={slot} className="bg-slate-900">{slot}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         <div>

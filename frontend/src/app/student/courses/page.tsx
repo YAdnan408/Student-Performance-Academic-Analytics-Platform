@@ -89,9 +89,6 @@ const CourseListingPage = () => {
                         <h3 className="text-lg font-semibold text-white">{course.title}</h3>
                         <p className="text-xs text-purple-200/50 font-mono">{course.course_code}</p>
                       </div>
-                      <span className="text-xs bg-purple-500/20 text-purple-200 px-2.5 py-1 rounded-full border border-purple-500/20">
-                        {course.credit_hours} cr
-                      </span>
                     </div>
                     <p className="text-sm text-purple-200/60 line-clamp-2">{course.description}</p>
                   </div>

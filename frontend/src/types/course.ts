@@ -12,13 +12,12 @@ export interface Course {
   course_code: string;
   title: string;
   description: string;
-  credit_hours: number;
   cost: number;
   duration: string;
   start_date: string | null;
   end_date: string | null;
   marks_distribution: MarksDistribution | null;
-  department: string | null;
+  class_schedule: Record<string, string> | null;
   instructor_name: string | null;
 }
 
@@ -30,6 +29,8 @@ export interface InstructorInfo {
 
 export interface CourseDetail extends Course {
   instructor: InstructorInfo | null;
+  is_enrolled: boolean;
+  status: string;
 }
 
 export interface EnrollResponse {
@@ -50,11 +51,11 @@ export interface MyCourseItem {
     course_code: string;
     title: string;
     description: string;
-    credit_hours: number;
     cost: number;
     duration: string;
     start_date: string | null;
     end_date: string | null;
+    status: string;
   };
   instructor_name: string | null;
 }
@@ -65,13 +66,12 @@ export interface InstructorCourseItem {
   course_code: string;
   title: string;
   description: string;
-  credit_hours: number;
   cost: number;
   duration: string;
   start_date: string | null;
   end_date: string | null;
   marks_distribution: MarksDistribution | null;
-  section: string;
+  class_schedule: Record<string, string> | null;
   semester: string | null;
   enrolled_students: number;
 }

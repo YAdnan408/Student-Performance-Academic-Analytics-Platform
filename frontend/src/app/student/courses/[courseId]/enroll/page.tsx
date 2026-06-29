@@ -261,7 +261,7 @@ const EnrollPage = () => {
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-purple-200/60">Course</span>
-                  <span className="text-white font-medium">{course.title}</span>
+                  <span className="text-white font-medium text-right max-w-[60%]">{course.title}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-purple-200/60">Code</span>

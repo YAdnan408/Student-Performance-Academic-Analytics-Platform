@@ -55,11 +55,9 @@ const InstructorCoursesPage = () => {
                       <span className="text-xs bg-white/10 text-purple-200/70 px-2 py-0.5 rounded-full font-mono">
                         {course.course_code}
                       </span>
-                      <Badge variant="info">Section {course.section}</Badge>
                     </div>
                     <p className="text-sm text-purple-200/60 line-clamp-2 mb-3">{course.description}</p>
                     <div className="flex flex-wrap items-center gap-4 text-xs text-purple-200/50">
-                      <span>Credit Hours: {course.credit_hours}</span>
                       <span>Duration: {course.duration || '—'}</span>
                       {course.semester && <span>Semester: {course.semester}</span>}
                       <span>Students Enrolled: {course.enrolled_students}</span>

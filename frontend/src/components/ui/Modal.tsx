@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -29,17 +30,15 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center">
-      {/* Backdrop — absolute inside the fixed container so positioning works correctly */}
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-md"
+        className="absolute inset-0 bg-black/10 backdrop-blur-lg"
         onClick={onClose}
       />
-      {/* Modal box */}
       <div
         className="relative w-full max-w-lg flex flex-col bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl p-6"
-        style={{ maxHeight: 'calc(70vh - 0.5rem)' }}
+        style={{ maxHeight: 'calc(80vh - 0.5rem)', marginTop: '-10vh' }}
       >
         {title && (
           <div className="flex items-center justify-between mb-4 shrink-0">
@@ -58,7 +57,8 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

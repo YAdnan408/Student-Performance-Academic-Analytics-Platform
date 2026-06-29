@@ -6,6 +6,11 @@ from app.modules.auth.dependencies import get_current_user, RoleChecker
 from app.models.user import User
 from app.models.course import Course
 from app.models.course_offering import CourseOffering
+from app.models.enrollment import Enrollment
+from app.models.assessment import Assessment
+from app.models.grade import Grade
+from app.models.attendance import Attendance
+from app.models.payment import Payment
 from app.models.semester import Semester
 from app.models.instructor import Instructor
 from app.models.student import Student
@@ -31,8 +36,10 @@ def admin_list_courses(
             CourseOffering.course_id == course.id
         ).first()
         instructor_name = None
+        instructor_id = None
         if offerings and offerings.instructor:
             instructor_name = f"{offerings.instructor.first_name} {offerings.instructor.last_name}"
+            instructor_id = str(offerings.instructor_id)
         result.append({
             "id": str(course.id),
             "course_code": course.course_code,
@@ -46,6 +53,7 @@ def admin_list_courses(
             "class_schedule": course.class_schedule,
             "status": course.status,
             "instructor_name": instructor_name,
+            "instructor_id": instructor_id,
         })
     return result
 
@@ -108,6 +116,36 @@ def admin_update_course(
     if request.class_schedule is not None:
         course.class_schedule = request.class_schedule
 
+    if request.instructor_id is not None:
+        existing = db.query(CourseOffering).filter(
+            CourseOffering.course_id == course_id
+        ).first()
+        if request.instructor_id:
+            instructor = db.query(Instructor).filter(Instructor.id == request.instructor_id).first()
+            if not instructor:
+                raise NotFoundException("Instructor not found")
+            if existing:
+                existing.instructor_id = request.instructor_id
+            else:
+                semester = db.query(Semester).first()
+                if not semester:
+                    semester = Semester(
+                        name="Summer 2026",
+                        start_date=date(2026, 5, 1),
+                        end_date=date(2026, 8, 31),
+                    )
+                    db.add(semester)
+                    db.flush()
+                offering = CourseOffering(
+                    course_id=course_id,
+                    instructor_id=request.instructor_id,
+                    semester_id=semester.id,
+                )
+                db.add(offering)
+        else:
+            if existing:
+                db.delete(existing)
+
     db.commit()
     db.refresh(course)
     return {
@@ -128,7 +166,28 @@ def admin_delete_course(
     if not course:
         raise NotFoundException("Course not found")
 
-    db.query(CourseOffering).filter(CourseOffering.course_id == course_id).delete()
+    offerings = db.query(CourseOffering).filter(CourseOffering.course_id == course_id).all()
+    offering_ids = [o.id for o in offerings]
+
+    if offering_ids:
+        enrollments = db.query(Enrollment).filter(Enrollment.course_offering_id.in_(offering_ids)).all()
+        enrollment_ids = [e.id for e in enrollments]
+
+        assessments = db.query(Assessment).filter(Assessment.course_offering_id.in_(offering_ids)).all()
+        assessment_ids = [a.id for a in assessments]
+
+        if assessment_ids:
+            db.query(Grade).filter(Grade.assessment_id.in_(assessment_ids)).delete(synchronize_session=False)
+        if enrollment_ids:
+            db.query(Attendance).filter(Attendance.enrollment_id.in_(enrollment_ids)).delete(synchronize_session=False)
+            db.query(Payment).filter(Payment.enrollment_id.in_(enrollment_ids)).delete(synchronize_session=False)
+        if assessment_ids:
+            db.query(Assessment).filter(Assessment.course_offering_id.in_(offering_ids)).delete(synchronize_session=False)
+        if enrollment_ids:
+            db.query(Enrollment).filter(Enrollment.course_offering_id.in_(offering_ids)).delete(synchronize_session=False)
+
+        db.query(CourseOffering).filter(CourseOffering.course_id == course_id).delete()
+
     db.delete(course)
     db.commit()
     return {"message": "Course deleted successfully"}

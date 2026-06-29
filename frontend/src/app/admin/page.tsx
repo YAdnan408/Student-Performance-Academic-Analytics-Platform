@@ -9,7 +9,7 @@ import Modal from '@/components/ui/Modal';
 import Badge from '@/components/ui/Badge';
 import Spinner from '@/components/ui/Spinner';
 import { adminService } from '@/services/adminService';
-import { AdminCourse, AdminInstructor, AdminUser, CourseCreateData } from '@/types/admin';
+import { AdminCourse, AdminInstructor, AdminUser, CourseCreateData, CourseUpdateData } from '@/types/admin';
 
 type Tab = 'courses' | 'users';
 
@@ -85,11 +85,10 @@ const CoursesTab = () => {
   const [instructors, setInstructors] = useState<AdminInstructor[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
   const [showArchivedModal, setShowArchivedModal] = useState(false);
   const [archivedCourses, setArchivedCourses] = useState<AdminCourse[]>([]);
-  const [selectedCourse, setSelectedCourse] = useState<AdminCourse | null>(null);
-  const [assignInstructorId, setAssignInstructorId] = useState('');
+  const [editingCourse, setEditingCourse] = useState<AdminCourse | null>(null);
 
   const loadData = async () => {
     try {
@@ -112,7 +111,7 @@ const CoursesTab = () => {
   }, []);
 
   const handleDelete = async (courseId: string) => {
-    if (!confirm('Are you sure you want to delete this course?')) return;
+    if (!confirm('Are you sure you want to remove this course?')) return;
     try {
       await adminService.deleteCourse(courseId);
       loadData();
@@ -128,19 +127,6 @@ const CoursesTab = () => {
       setArchivedCourses(prev => prev.filter(c => c.id !== courseId));
     } catch (err) {
       console.error('Failed to renew course', err);
-    }
-  };
-
-  const handleAssign = async () => {
-    if (!selectedCourse || !assignInstructorId) return;
-    try {
-      await adminService.assignInstructor(selectedCourse.id, assignInstructorId);
-      setShowAssignModal(false);
-      setSelectedCourse(null);
-      setAssignInstructorId('');
-      loadData();
-    } catch (err) {
-      console.error('Failed to assign instructor', err);
     }
   };
 
@@ -220,19 +206,18 @@ const CoursesTab = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      setSelectedCourse(course);
-                      setAssignInstructorId('');
-                      setShowAssignModal(true);
+                      setEditingCourse(course);
+                      setShowEditModal(true);
                     }}
                   >
-                    Assign
+                    Edit
                   </Button>
                   <Button
                     variant="danger"
                     size="sm"
                     onClick={() => handleDelete(course.id)}
                   >
-                    Delete
+                    Remove
                   </Button>
                 </div>
               </div>
@@ -247,31 +232,16 @@ const CoursesTab = () => {
         onSuccess={loadData}
       />
 
-      <Modal
-        isOpen={showAssignModal}
-        onClose={() => setShowAssignModal(false)}
-        title={`Assign Instructor${selectedCourse ? ` - ${selectedCourse.title}` : ''}`}
-      >
-        <div className="space-y-4">
-          <label className="block text-sm font-medium text-purple-200">Select Instructor</label>
-          <select
-            value={assignInstructorId}
-            onChange={(e) => setAssignInstructorId(e.target.value)}
-            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
-          >
-            <option value="" className="bg-slate-900">Choose an instructor...</option>
-            {instructors.map((inst) => (
-              <option key={inst.id} value={inst.id} className="bg-slate-900">
-                {inst.first_name} {inst.last_name} ({inst.employee_id})
-              </option>
-            ))}
-          </select>
-          <div className="flex gap-3 pt-2">
-            <Button variant="outline" className="flex-1" onClick={() => setShowAssignModal(false)}>Cancel</Button>
-            <Button className="flex-1" onClick={handleAssign} disabled={!assignInstructorId}>Assign</Button>
-          </div>
-        </div>
-      </Modal>
+      <EditCourseModal
+        isOpen={showEditModal}
+        onClose={() => {
+          setShowEditModal(false);
+          setEditingCourse(null);
+        }}
+        onSuccess={loadData}
+        course={editingCourse}
+        instructors={instructors}
+      />
 
       <Modal
         isOpen={showArchivedModal}
@@ -497,6 +467,209 @@ const AddCourseModal = ({
           <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
           <Button className="flex-1" onClick={handleSubmit} loading={submitting} disabled={!form.course_code || !form.title}>
             {submitting ? 'Creating...' : 'Create Course'}
+          </Button>
+        </div>
+      </div>
+    </Modal>
+  );
+};
+
+const EditCourseModal = ({
+  isOpen,
+  onClose,
+  onSuccess,
+  course,
+  instructors,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: () => void;
+  course: AdminCourse | null;
+  instructors: AdminInstructor[];
+}) => {
+  const [form, setForm] = useState<CourseUpdateData>({
+    course_code: '',
+    title: '',
+    description: '',
+    cost: 0,
+    duration: '16 weeks',
+    start_date: '',
+    end_date: '',
+    marks_distribution: { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
+    class_schedule: { days: '', time_slot: '' },
+    instructor_id: null,
+  });
+  const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen && course) {
+      setForm({
+        course_code: course.course_code || '',
+        title: course.title || '',
+        description: course.description || '',
+        cost: course.cost || 0,
+        duration: course.duration || '16 weeks',
+        start_date: course.start_date || '',
+        end_date: course.end_date || '',
+        marks_distribution: course.marks_distribution as CourseUpdateData['marks_distribution'] || { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
+        class_schedule: course.class_schedule as CourseUpdateData['class_schedule'] || { days: '', time_slot: '' },
+        instructor_id: course.instructor_id || null,
+      });
+    }
+  }, [isOpen, course]);
+
+  const handleSubmit = async () => {
+    if (!form.course_code || !form.title) return;
+    setSubmitting(true);
+    try {
+      const payload = { ...form };
+      if (!payload.class_schedule?.days && !payload.class_schedule?.time_slot) {
+        delete payload.class_schedule;
+      }
+      await adminService.updateCourse(course!.id, payload);
+      onSuccess();
+      onClose();
+    } catch (err) {
+      console.error('Failed to update course', err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const updateMarks = (field: string, value: number) => {
+    setForm((prev) => ({
+      ...prev,
+      marks_distribution: { ...prev.marks_distribution, [field]: value } as CourseUpdateData['marks_distribution'],
+    }));
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={`Edit Course${course ? ` - ${course.title}` : ''}`}>
+      <div className="space-y-4">
+        <Input
+          label="Course Code"
+          placeholder="e.g. CSE101"
+          value={form.course_code || ''}
+          onChange={(e) => setForm({ ...form, course_code: e.target.value })}
+        />
+        <Input
+          label="Course Title"
+          placeholder="e.g. Introduction to Computer Science"
+          value={form.title || ''}
+          onChange={(e) => setForm({ ...form, title: e.target.value })}
+        />
+        <div>
+          <label className="block text-sm font-medium text-purple-200 mb-1.5">Description</label>
+          <textarea
+            placeholder="Course description..."
+            value={form.description || ''}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
+            rows={3}
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white placeholder-purple-200/40 focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Cost (৳)"
+            type="number"
+            value={String(form.cost || 0)}
+            onChange={(e) => setForm({ ...form, cost: parseFloat(e.target.value) || 0 })}
+          />
+          <Input
+            label="Duration"
+            value={form.duration || ''}
+            onChange={(e) => setForm({ ...form, duration: e.target.value })}
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <Input
+            label="Start Date"
+            type="date"
+            value={form.start_date || ''}
+            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+          />
+          <Input
+            label="End Date"
+            type="date"
+            value={form.end_date || ''}
+            onChange={(e) => setForm({ ...form, end_date: e.target.value })}
+          />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-purple-200 mb-1.5">Class Schedule</label>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs text-purple-200/50 mb-1">Days</label>
+              <select
+                value={form.class_schedule?.days || ''}
+                onChange={(e) => setForm({ ...form, class_schedule: { days: e.target.value, time_slot: form.class_schedule?.time_slot || '' } })}
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              >
+                <option value="" className="bg-slate-900">Select days</option>
+                {DAYS_OPTIONS.map((days) => (
+                  <option key={days} value={days} className="bg-slate-900">{days}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs text-purple-200/50 mb-1">Time Slot</label>
+              <select
+                value={form.class_schedule?.time_slot || ''}
+                onChange={(e) => setForm({ ...form, class_schedule: { days: form.class_schedule?.days || '', time_slot: e.target.value } })}
+                className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+              >
+                <option value="" className="bg-slate-900">Select time</option>
+                {TIME_SLOTS.map((slot) => (
+                  <option key={slot} value={slot} className="bg-slate-900">{slot}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-purple-200 mb-1.5">Assign Instructor</label>
+          <select
+            value={form.instructor_id || ''}
+            onChange={(e) => setForm({ ...form, instructor_id: e.target.value || null })}
+            className="w-full px-4 py-2.5 bg-white/5 border border-white/10 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-purple-500/50"
+          >
+            <option value="" className="bg-slate-900">No instructor</option>
+            {instructors.map((inst) => (
+              <option key={inst.id} value={inst.id} className="bg-slate-900">
+                {inst.first_name} {inst.last_name} ({inst.employee_id})
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-purple-200 mb-2">Marks Distribution (%)</label>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { key: 'mid', label: 'Mid' },
+              { key: 'final', label: 'Final' },
+              { key: 'quiz', label: 'Quiz' },
+              { key: 'assignments', label: 'Assignments' },
+              { key: 'lab', label: 'Lab' },
+              { key: 'attendance', label: 'Attendance' },
+            ].map((field) => (
+              <Input
+                key={field.key}
+                label={field.label}
+                type="number"
+                value={String((form.marks_distribution as Record<string, number>)?.[field.key] || 0)}
+                onChange={(e) => updateMarks(field.key, parseInt(e.target.value) || 0)}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-2">
+          <Button variant="outline" className="flex-1" onClick={onClose}>Cancel</Button>
+          <Button className="flex-1" onClick={handleSubmit} loading={submitting} disabled={!form.course_code || !form.title}>
+            {submitting ? 'Updating...' : 'Update Course'}
           </Button>
         </div>
       </div>

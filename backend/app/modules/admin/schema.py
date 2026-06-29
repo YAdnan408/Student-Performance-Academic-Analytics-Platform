@@ -24,6 +24,7 @@ class CourseUpdateRequest(BaseModel):
     end_date: Optional[str] = None
     marks_distribution: Optional[dict[str, Any]] = None
     class_schedule: Optional[dict[str, Any]] = None
+    instructor_id: Optional[str] = None
 
 
 class AssignInstructorRequest(BaseModel):

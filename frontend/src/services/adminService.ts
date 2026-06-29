@@ -1,5 +1,5 @@
 import api from '@/lib/api';
-import { AdminUser, AdminInstructor, AdminCourse, CourseCreateData } from '@/types/admin';
+import { AdminUser, AdminInstructor, AdminCourse, CourseCreateData, CourseUpdateData } from '@/types/admin';
 
 export const adminService = {
   async listCourses(): Promise<AdminCourse[]> {
@@ -9,6 +9,11 @@ export const adminService = {
 
   async createCourse(data: CourseCreateData): Promise<{ id: string; message: string }> {
     const response = await api.post<{ id: string; message: string }>('/admin/courses', data);
+    return response.data;
+  },
+
+  async updateCourse(courseId: string, data: CourseUpdateData): Promise<{ id: string; message: string }> {
+    const response = await api.put<{ id: string; message: string }>(`/admin/courses/${courseId}`, data);
     return response.data;
   },
 

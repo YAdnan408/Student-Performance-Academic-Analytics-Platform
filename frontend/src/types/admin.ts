@@ -36,6 +36,30 @@ export interface AdminCourse {
   class_schedule: Record<string, string> | null;
   status: string;
   instructor_name: string | null;
+  instructor_id: string | null;
+}
+
+export interface CourseUpdateData {
+  course_code?: string;
+  title?: string;
+  description?: string;
+  cost?: number;
+  duration?: string;
+  start_date?: string;
+  end_date?: string;
+  marks_distribution?: {
+    mid: number;
+    final: number;
+    quiz: number;
+    assignments: number;
+    lab: number;
+    attendance: number;
+  };
+  class_schedule?: {
+    days: string;
+    time_slot: string;
+  };
+  instructor_id?: string | null;
 }
 
 export interface CourseCreateData {

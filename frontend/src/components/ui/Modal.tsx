@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import { createPortal } from 'react-dom';
 
 interface ModalProps {
   isOpen: boolean;
@@ -19,25 +20,45 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children }) => {
     return () => { document.body.style.overflow = ''; };
   }, [isOpen]);
 
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    if (isOpen) window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg backdrop-blur-xl bg-slate-900/90 border border-white/10 rounded-3xl shadow-2xl p-6 animate-fadeIn max-h-[90vh] overflow-y-auto">
+  return createPortal(
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div
+        className="absolute inset-0 bg-black/10 backdrop-blur-lg"
+        onClick={onClose}
+      />
+      <div
+        className="relative w-full max-w-lg flex flex-col bg-slate-900/95 border border-white/10 rounded-2xl shadow-2xl p-6"
+        style={{ maxHeight: 'calc(80vh - 0.5rem)', marginTop: '-10vh' }}
+      >
         {title && (
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-4 shrink-0">
             <h2 className="text-lg font-semibold text-white">{title}</h2>
-            <button onClick={onClose} className="text-purple-200/50 hover:text-white transition-colors">
+            <button
+              onClick={onClose}
+              className="text-purple-200/50 hover:text-white transition-colors"
+            >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
           </div>
         )}
-        {children}
+        <div className="overflow-y-auto overflow-x-hidden flex-1" style={{ minHeight: 0 }}>
+          {children}
+        </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
 

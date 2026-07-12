@@ -1,4 +1,4 @@
-from .enums import UserRole, EnrollmentStatus, AttendanceStatus, AssessmentType
+from .enums import UserRole, CourseStatus, EnrollmentStatus, AttendanceStatus, AssessmentType
 from .user import User
 from .department import Department
 from .student import Student
@@ -16,3 +16,4 @@ from .recommendation import Recommendation
 from .report import Report
 from .department_analytics import DepartmentAnalytics
 from .program import Program
+from .payment import Payment

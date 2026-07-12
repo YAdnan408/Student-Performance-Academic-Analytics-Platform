@@ -11,7 +11,6 @@ class CourseOffering(Base):
     course_id = Column(UUID(as_uuid=True), ForeignKey("courses.id"))
     instructor_id = Column(UUID(as_uuid=True), ForeignKey("instructors.id"))
     semester_id = Column(UUID(as_uuid=True), ForeignKey("semesters.id"))
-    section = Column(String(10))
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     course = relationship("Course", back_populates="offerings")

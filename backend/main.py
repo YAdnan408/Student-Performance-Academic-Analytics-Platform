@@ -6,6 +6,7 @@ from app.modules.auth.router import router as auth_router
 from app.modules.profile.router import router as profile_router
 from app.modules.academic.router import router as academic_router
 from app.modules.admin.router import router as admin_router
+from app.modules.analytics.router import router as analytics_router
 import os
 
 app = FastAPI(title="Student Academics API")
@@ -26,6 +27,7 @@ app.include_router(auth_router)
 app.include_router(profile_router)
 app.include_router(academic_router)
 app.include_router(admin_router)
+app.include_router(analytics_router)
 
 # Mount uploads directory for static file serving
 uploads_dir = os.path.join(os.path.dirname(__file__), "uploads")

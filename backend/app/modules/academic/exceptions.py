@@ -19,3 +19,28 @@ class AlreadyEnrolledException(AppException):
 class ScheduleClashException(AppException):
     def __init__(self, message: str = "Schedule clash detected with an existing course"):
         super().__init__(message, status_code=409)
+
+
+class InstructorNotAssignedException(AppException):
+    def __init__(self, message: str = "You are not assigned to this course"):
+        super().__init__(message, status_code=403)
+
+
+class EnrollmentNotFoundException(AppException):
+    def __init__(self, message: str = "Enrollment not found"):
+        super().__init__(message, status_code=404)
+
+
+class AttendanceAlreadyMarkedException(AppException):
+    def __init__(self, message: str = "Attendance already marked for this date"):
+        super().__init__(message, status_code=409)
+
+
+class AttendanceNotFoundException(AppException):
+    def __init__(self, message: str = "Attendance record not found"):
+        super().__init__(message, status_code=404)
+
+
+class InstructorProfileNotFoundException(AppException):
+    def __init__(self, message: str = "Instructor profile not found"):
+        super().__init__(message, status_code=404)

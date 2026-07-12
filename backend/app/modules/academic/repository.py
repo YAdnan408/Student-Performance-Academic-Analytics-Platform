@@ -6,8 +6,10 @@ from app.models.enrollment import Enrollment
 from app.models.payment import Payment
 from app.models.student import Student
 from app.models.instructor import Instructor
+from app.models.attendance import Attendance
 from app.modules.academic.interfaces import IAcademicRepository
 from typing import Optional
+from datetime import date
 
 
 class AcademicRepository(IAcademicRepository):
@@ -122,3 +124,102 @@ class AcademicRepository(IAcademicRepository):
 
     def get_instructor_by_user_id(self, db: Session, user_id: str) -> Optional[Instructor]:
         return db.query(Instructor).filter(Instructor.user_id == user_id).first()
+
+    def get_offering_by_id(self, db: Session, offering_id: str) -> Optional[CourseOffering]:
+        return (
+            db.query(CourseOffering)
+            .options(joinedload(CourseOffering.course))
+            .options(joinedload(CourseOffering.instructor))
+            .filter(CourseOffering.id == offering_id)
+            .first()
+        )
+
+    def get_enrollment_by_id(self, db: Session, enrollment_id: str) -> Optional[Enrollment]:
+        return (
+            db.query(Enrollment)
+            .options(
+                joinedload(Enrollment.course_offering).joinedload(CourseOffering.course),
+                joinedload(Enrollment.student),
+            )
+            .filter(Enrollment.id == enrollment_id)
+            .first()
+        )
+
+    def get_student_by_id(self, db: Session, student_id: str) -> Optional[Student]:
+        return db.query(Student).filter(Student.id == student_id).first()
+
+    def get_attendance(self, db: Session, enrollment_id: str, attendance_date: date) -> Optional[Attendance]:
+        return (
+            db.query(Attendance)
+            .filter(
+                Attendance.enrollment_id == enrollment_id,
+                Attendance.date == attendance_date,
+            )
+            .first()
+        )
+
+    def create_attendance(self, db: Session, enrollment_id: str, attendance_date: date, status: str, marked_by: str) -> Attendance:
+        record = Attendance(
+            enrollment_id=enrollment_id,
+            date=attendance_date,
+            status=status,
+            marked_by=marked_by,
+        )
+        db.add(record)
+        db.commit()
+        db.refresh(record)
+        return record
+
+    def update_attendance(self, db: Session, attendance_id: str, status: str) -> Optional[Attendance]:
+        record = db.query(Attendance).filter(Attendance.id == attendance_id).first()
+        if not record:
+            return None
+        record.status = status
+        db.commit()
+        db.refresh(record)
+        return record
+
+    def get_attendance_by_id(self, db: Session, attendance_id: str) -> Optional[Attendance]:
+        return db.query(Attendance).filter(Attendance.id == attendance_id).first()
+
+    def get_attendance_for_enrollment(self, db: Session, enrollment_id: str) -> list:
+        return (
+            db.query(Attendance)
+            .filter(Attendance.enrollment_id == enrollment_id)
+            .order_by(Attendance.date.desc())
+            .all()
+        )
+
+    def get_attendance_for_student(self, db: Session, student_id: str) -> list:
+        return (
+            db.query(Attendance)
+            .join(Enrollment, Attendance.enrollment_id == Enrollment.id)
+            .filter(Enrollment.student_id == student_id)
+            .order_by(Attendance.date.desc())
+            .all()
+        )
+
+    def get_enrollments_by_offering(self, db: Session, offering_id: str) -> list:
+        return (
+            db.query(Enrollment)
+            .options(
+                joinedload(Enrollment.student),
+                joinedload(Enrollment.course_offering).joinedload(CourseOffering.course),
+            )
+            .filter(
+                Enrollment.course_offering_id == offering_id,
+                Enrollment.status == "active",
+            )
+            .all()
+        )
+
+    def get_attendance_for_offering_and_date(self, db: Session, offering_id: str, attendance_date: date) -> list:
+        return (
+            db.query(Attendance)
+            .join(Enrollment, Attendance.enrollment_id == Enrollment.id)
+            .filter(
+                Enrollment.course_offering_id == offering_id,
+                Attendance.date == attendance_date,
+            )
+            .all()
+        )

@@ -680,6 +680,8 @@ const EditCourseModal = ({
 const UsersTab = () => {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
+  const [removeModalUser, setRemoveModalUser] = useState<AdminUser | null>(null);
+  const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
     loadUsers();
@@ -697,13 +699,21 @@ const UsersTab = () => {
     }
   };
 
-  const handleRemoveUser = async (userId: string, email: string) => {
-    if (!confirm(`Are you sure you want to deactivate user: ${email}?`)) return;
+  const handleRemoveUser = (user: AdminUser) => {
+    setRemoveModalUser(user);
+  };
+
+  const confirmRemoveUser = async () => {
+    if (!removeModalUser) return;
     try {
-      await adminService.deleteUser(userId);
+      setRemoving(true);
+      await adminService.deleteUser(removeModalUser.id);
+      setRemoveModalUser(null);
       loadUsers();
     } catch (err) {
       console.error('Failed to remove user', err);
+    } finally {
+      setRemoving(false);
     }
   };
 
@@ -754,7 +764,7 @@ const UsersTab = () => {
                   <Button
                     variant="danger"
                     size="sm"
-                    onClick={() => handleRemoveUser(u.id, u.email)}
+                    onClick={() => handleRemoveUser(u)}
                   >
                     Remove
                   </Button>
@@ -764,6 +774,26 @@ const UsersTab = () => {
           ))}
         </div>
       )}
+
+      <Modal isOpen={!!removeModalUser} onClose={() => setRemoveModalUser(null)} title="Confirm Delete">
+        {removeModalUser && (
+          <div>
+            <p className="text-purple-200/70 mb-6">
+              Are you sure you want to permanently delete{' '}
+              <span className="text-white font-semibold">{removeModalUser.profile?.name || removeModalUser.email}</span>?
+              This action cannot be undone. All associated data (enrollments, grades, attendance, etc.) will also be removed.
+            </p>
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setRemoveModalUser(null)} disabled={removing}>
+                Cancel
+              </Button>
+              <Button variant="danger" onClick={confirmRemoveUser} loading={removing}>
+                Confirm Delete
+              </Button>
+            </div>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 };

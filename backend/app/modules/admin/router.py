@@ -14,6 +14,9 @@ from app.models.payment import Payment
 from app.models.semester import Semester
 from app.models.instructor import Instructor
 from app.models.student import Student
+from app.models.gpa_record import GPARecord
+from app.models.ml_prediction import MLPrediction
+from app.models.recommendation import Recommendation
 from app.models.enums import CourseStatus
 from app.modules.admin.schema import CourseCreateRequest, CourseUpdateRequest, AssignInstructorRequest
 from app.core.exceptions import NotFoundException
@@ -362,6 +365,30 @@ def admin_delete_user(
     if str(user_to_delete.id) == str(user.id):
         return {"message": "Cannot delete yourself"}, 400
 
-    user_to_delete.is_active = False
+    if user_to_delete.role == "student":
+        student = user_to_delete.student
+        if student:
+            enrollment_ids = [
+                e.id for e in db.query(Enrollment).filter(Enrollment.student_id == student.id).all()
+            ]
+            if enrollment_ids:
+                db.query(Attendance).filter(Attendance.enrollment_id.in_(enrollment_ids)).delete(synchronize_session=False)
+                db.query(Payment).filter(Payment.enrollment_id.in_(enrollment_ids)).delete(synchronize_session=False)
+                db.query(Enrollment).filter(Enrollment.id.in_(enrollment_ids)).delete(synchronize_session=False)
+            db.query(Grade).filter(Grade.student_id == student.id).delete(synchronize_session=False)
+            db.query(GPARecord).filter(GPARecord.student_id == student.id).delete(synchronize_session=False)
+            db.query(MLPrediction).filter(MLPrediction.student_id == student.id).delete(synchronize_session=False)
+            db.query(Recommendation).filter(Recommendation.student_id == student.id).delete(synchronize_session=False)
+            db.delete(student)
+
+    elif user_to_delete.role == "instructor":
+        instructor = user_to_delete.instructor
+        if instructor:
+            db.query(CourseOffering).filter(CourseOffering.instructor_id == instructor.id).update(
+                {"instructor_id": None}, synchronize_session=False
+            )
+            db.delete(instructor)
+
+    db.delete(user_to_delete)
     db.commit()
-    return {"message": f"User {user_to_delete.email} has been deactivated"}
+    return {"message": f"User {user_to_delete.email} has been permanently deleted"}

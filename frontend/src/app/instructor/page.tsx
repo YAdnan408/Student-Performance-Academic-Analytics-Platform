@@ -25,7 +25,7 @@ const InstructorDashboard = () => {
             <Card key={i}>
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
-                  <span className="text-white font-bold text-lg">{stat.value === '—' ? '—' : stat.value}</span>
+                  <span className="text-white font-bold text-lg">{stat.value}</span>
                 </div>
                 <div>
                   <p className="text-sm text-purple-200/60">{stat.label}</p>

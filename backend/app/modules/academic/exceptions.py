@@ -44,3 +44,28 @@ class AttendanceNotFoundException(AppException):
 class InstructorProfileNotFoundException(AppException):
     def __init__(self, message: str = "Instructor profile not found"):
         super().__init__(message, status_code=404)
+
+
+class AssessmentNotFoundException(AppException):
+    def __init__(self, message: str = "Assessment not found"):
+        super().__init__(message, status_code=404)
+
+
+class AssessmentValidationException(AppException):
+    def __init__(self, message: str = "Invalid assessment configuration"):
+        super().__init__(message, status_code=400)
+
+
+class GradeImportException(AppException):
+    def __init__(self, message: str = "Grade import failed"):
+        super().__init__(message, status_code=400)
+
+
+class MaterialNotFoundException(AppException):
+    def __init__(self, message: str = "Course material not found"):
+        super().__init__(message, status_code=404)
+
+
+class UnauthorizedAccessException(AppException):
+    def __init__(self, message: str = "You do not have access to this resource"):
+        super().__init__(message, status_code=403)

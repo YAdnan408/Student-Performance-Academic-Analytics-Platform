@@ -24,3 +24,10 @@ class AssessmentType(str, enum.Enum):
     assignment = "assignment"
     midterm = "midterm"
     final = "final"
+    lab = "lab"
+    attendance = "attendance"
+
+class MaterialType(str, enum.Enum):
+    file = "file"
+    video = "video"
+    link = "link"

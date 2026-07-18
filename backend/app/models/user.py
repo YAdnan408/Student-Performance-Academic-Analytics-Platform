@@ -18,3 +18,4 @@ class User(Base):
 
     student = relationship("Student", back_populates="user", uselist=False)
     instructor = relationship("Instructor", back_populates="user", uselist=False)
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")

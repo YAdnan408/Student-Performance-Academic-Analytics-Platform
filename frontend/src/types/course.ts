@@ -46,6 +46,7 @@ export interface EnrollResponse {
 export interface MyCourseItem {
   enrollment_id: string;
   enrolled_at: string | null;
+  offering_id: string;
   course: {
     id: string;
     course_code: string;
@@ -57,6 +58,7 @@ export interface MyCourseItem {
     end_date: string | null;
     status: string;
     class_schedule: Record<string, string> | null;
+    marks_distribution?: MarksDistribution | null;
   };
   instructor_name: string | null;
 }

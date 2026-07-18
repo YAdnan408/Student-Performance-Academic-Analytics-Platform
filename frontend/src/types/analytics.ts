@@ -1,3 +1,33 @@
+export interface ActivityItem {
+  id: string;
+  actor_name: string;
+  role: string;
+  action_type: string;
+  message: string;
+  course_code: string | null;
+  course_title: string | null;
+  offering_id: string | null;
+  link: string | null;
+  created_at: string | null;
+}
+
+export interface DeadlineItem {
+  assessment_id: string;
+  title: string;
+  type: string;
+  type_label: string;
+  course_code: string;
+  course_title: string;
+  offering_id: string;
+  due_date: string | null;
+  window_start: string | null;
+  window_end: string | null;
+  deadline_at: string;
+  deadline_label: string;
+  is_published: boolean;
+  link?: string;
+}
+
 export interface StudentGpaAnalytics {
   cgpa: number | null;
   graded_courses: number;
@@ -22,6 +52,9 @@ export interface StudentDashboardAnalytics {
   attendance: import('@/types/attendance').StudentAnalyticsOverview;
   gpa: StudentGpaAnalytics;
   heatmap: { heatmap: Record<string, string>; total_records: number };
+  recent_activity: ActivityItem[];
+  upcoming_deadlines: DeadlineItem[];
+  pending_tasks: number;
 }
 
 export interface InstructorGradeCourseStat {
@@ -43,6 +76,9 @@ export interface InstructorGradeOverview {
 export interface InstructorDashboardAnalytics {
   attendance: import('@/types/attendance').InstructorAnalyticsOverview;
   grades: InstructorGradeOverview;
+  recent_activity: ActivityItem[];
+  upcoming_deadlines: DeadlineItem[];
+  pending_tasks: number;
 }
 
 export interface CourseGradeAnalytics {

@@ -13,6 +13,11 @@ import AlertBanner from '@/components/ui/AlertBanner';
 import FileInput from '@/components/ui/FileInput';
 import { bdDatetimeLocalToIso, formatBdDateTime } from '@/lib/datetime';
 import { gradesService } from '@/services/gradesService';
+import { analyticsService } from '@/services/analyticsService';
+import { CourseGradeAnalytics } from '@/types/analytics';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
+} from 'recharts';
 import {
   Assessment,
   AssessmentType,
@@ -44,6 +49,7 @@ const InstructorCourseHubPage = () => {
   const [policies, setPolicies] = useState<GradingPolicy[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [gradebook, setGradebook] = useState<GradebookResponse | null>(null);
+  const [gradeAnalytics, setGradeAnalytics] = useState<CourseGradeAnalytics | null>(null);
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<StatusMessage | null>(null);
@@ -135,8 +141,11 @@ const InstructorCourseHubPage = () => {
   }, [loadHub, loadPolicies, loadAssessments, loadMaterials]);
 
   useEffect(() => {
-    if (tab === 'grades') loadGradebook().catch(console.error);
-  }, [tab, loadGradebook]);
+    if (tab === 'grades') {
+      loadGradebook().catch(console.error);
+      analyticsService.getCourseGradeAnalytics(offeringId).then(setGradeAnalytics).catch(console.error);
+    }
+  }, [tab, loadGradebook, offeringId]);
 
   const savePolicies = async () => {
     try {
@@ -242,6 +251,7 @@ const InstructorCourseHubPage = () => {
         text: `Gradebook saved — created ${result.created}, updated ${result.updated}${result.errors.length ? `, errors ${result.errors.length}` : ''}`,
       });
       await loadGradebook();
+      analyticsService.getCourseGradeAnalytics(offeringId).then(setGradeAnalytics).catch(console.error);
     } catch (err: unknown) {
       const ax = err as { response?: { data?: { detail?: string } } };
       setMessage({ type: 'error', text: ax.response?.data?.detail || 'Failed to save gradebook' });
@@ -575,6 +585,61 @@ const InstructorCourseHubPage = () => {
                 </div>
               )}
             </Card>
+
+            {gradeAnalytics && gradeAnalytics.students_graded > 0 && (
+              <div className="space-y-4 pt-6 mt-2 border-t border-white/10">
+                <h3 className="text-lg font-semibold text-white">Grade Analytics</h3>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                  <Card>
+                    <p className="text-xs text-purple-200/50">Class Average</p>
+                    <p className="text-3xl font-bold text-white">{gradeAnalytics.class_average ?? '—'}%</p>
+                    <p className="text-xs text-purple-200/40 mt-1">{gradeAnalytics.students_graded}/{gradeAnalytics.total_students} graded</p>
+                  </Card>
+                  <Card>
+                    <p className="text-xs text-purple-200/50 mb-2">Grade Distribution</p>
+                    <ResponsiveContainer width="100%" height={120}>
+                      <BarChart data={gradeAnalytics.distribution}>
+                        <XAxis dataKey="range" tick={{ fill: '#c4b5fd', fontSize: 9 }} axisLine={false} tickLine={false} />
+                        <YAxis hide />
+                        <Bar dataKey="count" fill="#a78bfa" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Card>
+                  <Card>
+                    <p className="text-xs text-purple-200/50 mb-2">At-Risk Students</p>
+                    {gradeAnalytics.at_risk_students.length === 0 ? (
+                      <p className="text-emerald-400 text-sm">None identified</p>
+                    ) : (
+                      <ul className="text-xs space-y-1 max-h-[100px] overflow-y-auto">
+                        {gradeAnalytics.at_risk_students.slice(0, 5).map((s) => (
+                          <li key={s.student_id} className="flex justify-between text-purple-200/70">
+                            <span>{s.student_name}</span>
+                            <span className="text-red-400">{s.total_marks}%</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                    {gradeAnalytics.insight && (
+                      <p className="text-xs text-amber-300/80 mt-2">{gradeAnalytics.insight}</p>
+                    )}
+                  </Card>
+                </div>
+                {gradeAnalytics.assessment_averages.some((a) => a.average_percentage != null) && (
+                  <Card>
+                    <h3 className="text-sm font-semibold text-white mb-3">Assessment Performance (class avg %)</h3>
+                    <ResponsiveContainer width="100%" height={200}>
+                      <LineChart data={gradeAnalytics.assessment_averages.filter((a) => a.average_percentage != null)}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="csv_column" tick={{ fill: '#c4b5fd', fontSize: 9 }} axisLine={false} tickLine={false} />
+                        <YAxis domain={[0, 100]} tick={{ fill: '#c4b5fd', fontSize: 10 }} axisLine={false} tickLine={false} />
+                        <Tooltip contentStyle={{ background: '#1e1b4b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12 }} />
+                        <Line type="monotone" dataKey="average_percentage" stroke="#34d399" strokeWidth={2} dot={{ fill: '#34d399', r: 3 }} name="Avg %" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Card>
+                )}
+              </div>
+            )}
           </div>
         )}
 

@@ -1,11 +1,41 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
+import Spinner from '@/components/ui/Spinner';
+import { analyticsService } from '@/services/analyticsService';
+import { InstructorDashboardAnalytics } from '@/types/analytics';
 
 const InstructorDashboard = () => {
   const { user } = useAuth();
+  const [data, setData] = useState<InstructorDashboardAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    analyticsService.getInstructorDashboard()
+      .then(setData)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, []);
+
+  const totalAtRiskGrades = (data?.grades.course_stats || []).reduce((s, c) => s + c.students_at_risk, 0);
+
+  const stats = [
+    { label: 'Active Courses', value: String(data?.attendance.total_courses ?? '—'), color: 'from-purple-500 to-blue-600' },
+    { label: 'Total Students', value: String(data?.attendance.total_students ?? '—'), color: 'from-emerald-500 to-teal-600' },
+    { label: 'At Risk (Grades)', value: String(totalAtRiskGrades || '—'), color: 'from-amber-500 to-orange-600' },
+    { label: 'Courses with Grades', value: String(data?.grades.total_courses ?? '—'), color: 'from-rose-500 to-pink-600' },
+  ];
+
+  if (loading) {
+    return (
+      <DashboardLayout allowedRoles={['instructor']}>
+        <div className="flex justify-center py-20"><Spinner size="lg" /></div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout allowedRoles={['instructor']}>
@@ -16,12 +46,7 @@ const InstructorDashboard = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-8">
-          {[
-            { label: 'Active Courses', value: '—', color: 'from-purple-500 to-blue-600' },
-            { label: 'Total Students', value: '—', color: 'from-emerald-500 to-teal-600' },
-            { label: 'Assessments', value: '—', color: 'from-amber-500 to-orange-600' },
-            { label: 'Pending Reviews', value: '—', color: 'from-rose-500 to-pink-600' },
-          ].map((stat, i) => (
+          {stats.map((stat, i) => (
             <Card key={i}>
               <div className="flex items-center gap-4">
                 <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
@@ -41,8 +66,8 @@ const InstructorDashboard = () => {
             <p className="text-purple-200/40 text-sm">No recent activity to display.</p>
           </Card>
           <Card>
-            <h2 className="text-lg font-semibold text-white mb-4">Upcoming Tasks</h2>
-            <p className="text-purple-200/40 text-sm">No upcoming tasks.</p>
+            <h2 className="text-lg font-semibold text-white mb-4">Upcoming Deadlines</h2>
+            <p className="text-purple-200/40 text-sm">No upcoming deadlines.</p>
           </Card>
         </div>
       </div>

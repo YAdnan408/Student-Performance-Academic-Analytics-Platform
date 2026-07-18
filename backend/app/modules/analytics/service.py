@@ -216,10 +216,34 @@ class AnalyticsService:
         }
 
     def get_student_dashboard(self, db: Session, user_id: str) -> dict:
+        from app.modules.activity.logger import list_recent_activities
+        from app.modules.analytics.deadlines import get_student_upcoming_deadlines
+
         attendance = self.get_student_analytics_overview(db, user_id)
         gpa = self.get_student_gpa_analytics(db, user_id)
         heatmap = self.get_attendance_heatmap(db, user_id)
-        return {"attendance": attendance, "gpa": gpa, "heatmap": heatmap}
+        deadlines = get_student_upcoming_deadlines(db, user_id)
+        return {
+            "attendance": attendance,
+            "gpa": gpa,
+            "heatmap": heatmap,
+            "recent_activity": list_recent_activities(db, user_id),
+            "upcoming_deadlines": deadlines,
+            "pending_tasks": len(deadlines),
+        }
+
+    def get_instructor_dashboard(self, db: Session, user_id: str) -> dict:
+        from app.modules.activity.logger import list_recent_activities
+        from app.modules.analytics.deadlines import get_instructor_upcoming_deadlines
+
+        deadlines = get_instructor_upcoming_deadlines(db, user_id)
+        return {
+            "attendance": self.get_instructor_analytics_overview(db, user_id),
+            "grades": self.get_instructor_grade_overview(db, user_id),
+            "recent_activity": list_recent_activities(db, user_id),
+            "upcoming_deadlines": deadlines,
+            "pending_tasks": len(deadlines),
+        }
 
     def _instructor_offerings(self, db: Session, user_id: str) -> list:
         from app.modules.academic.repository import AcademicRepository
@@ -303,10 +327,4 @@ class AnalyticsService:
             "at_risk_students": at_risk[:10],
             "assessment_averages": assessment_class_averages(columns, students),
             "insight": insight,
-        }
-
-    def get_instructor_dashboard(self, db: Session, user_id: str) -> dict:
-        return {
-            "attendance": self.get_instructor_analytics_overview(db, user_id),
-            "grades": self.get_instructor_grade_overview(db, user_id),
         }

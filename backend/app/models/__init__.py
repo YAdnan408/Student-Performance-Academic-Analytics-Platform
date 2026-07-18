@@ -13,6 +13,7 @@ from .grade import Grade
 from .grading_policy import GradingPolicy
 from .course_material import CourseMaterial
 from .notification import Notification
+from .activity import Activity
 from .gpa_record import GPARecord
 from .ml_prediction import MLPrediction
 from .recommendation import Recommendation

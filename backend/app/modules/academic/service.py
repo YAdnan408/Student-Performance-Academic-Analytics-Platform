@@ -193,6 +193,16 @@ class AcademicService:
             db, str(enrollment.id), course.cost or 0, payment_method, transaction_id
         )
 
+        from app.modules.activity.logger import log_activity
+        log_activity(
+            db, user_id, "course_enrolled",
+            f"enrolled in {course.course_code} — {course.title}",
+            course_code=course.course_code,
+            course_title=course.title,
+            offering_id=str(offering.id),
+            link=f"/student/my-courses/{offering.id}",
+        )
+
         return {
             "enrollment_id": str(enrollment.id),
             "payment_id": str(payment.id),
@@ -264,6 +274,17 @@ class AcademicService:
             db, enrollment_id, parsed_date, status, str(instructor.id)
         )
 
+        course = offering.course
+        from app.modules.activity.logger import log_activity
+        log_activity(
+            db, user_id, "attendance_marked",
+            f"marked attendance for {course.course_code} — {course.title} on {attendance_date}",
+            course_code=course.course_code,
+            course_title=course.title,
+            offering_id=str(offering.id),
+            link=f"/instructor/students/attendance/{offering.id}",
+        )
+
         return {
             "id": str(record.id),
             "enrollment_id": str(record.enrollment_id),
@@ -310,6 +331,17 @@ class AcademicService:
                 db, enrollment_id, parsed_date, status, str(instructor.id)
             )
             marked += 1
+
+        course = offering.course
+        from app.modules.activity.logger import log_activity
+        log_activity(
+            db, user_id, "attendance_marked",
+            f"marked attendance for {course.course_code} — {course.title} on {attendance_date}",
+            course_code=course.course_code,
+            course_title=course.title,
+            offering_id=offering_id,
+            link=f"/instructor/students/attendance/{offering_id}",
+        )
 
         return {
             "total": len(records),

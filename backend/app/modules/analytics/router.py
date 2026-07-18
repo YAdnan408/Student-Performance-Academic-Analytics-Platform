@@ -36,6 +36,52 @@ def instructor_analytics_overview(
     return service.get_instructor_analytics_overview(db, str(user.id))
 
 
+@router.get("/student/dashboard")
+def student_dashboard(
+    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
+    user: User = Depends(RoleChecker(["student"])),
+):
+    return service.get_student_dashboard(db, str(user.id))
+
+
+@router.get("/student/gpa")
+def student_gpa_analytics(
+    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
+    user: User = Depends(RoleChecker(["student"])),
+):
+    return service.get_student_gpa_analytics(db, str(user.id))
+
+
+@router.get("/instructor/dashboard")
+def instructor_dashboard(
+    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
+    user: User = Depends(RoleChecker(["instructor"])),
+):
+    return service.get_instructor_dashboard(db, str(user.id))
+
+
+@router.get("/instructor/grades")
+def instructor_grade_overview(
+    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
+    user: User = Depends(RoleChecker(["instructor"])),
+):
+    return service.get_instructor_grade_overview(db, str(user.id))
+
+
+@router.get("/instructor/course/{offering_id}/grades")
+def instructor_course_grade_analytics(
+    offering_id: str,
+    db: Session = Depends(get_db),
+    service: AnalyticsService = Depends(get_analytics_service),
+    user: User = Depends(RoleChecker(["instructor"])),
+):
+    return service.get_instructor_course_grade_analytics(db, str(user.id), offering_id)
+
+
 @router.get("/instructor/course/{offering_id}/weekly-trend")
 def instructor_course_weekly_trend(
     offering_id: str,

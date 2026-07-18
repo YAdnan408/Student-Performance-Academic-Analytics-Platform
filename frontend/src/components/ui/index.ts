@@ -5,3 +5,5 @@ export { default as Modal } from './Modal';
 export { default as Avatar } from './Avatar';
 export { default as Badge } from './Badge';
 export { default as Spinner } from './Spinner';
+export { default as AlertBanner } from './AlertBanner';
+export { default as FileInput } from './FileInput';

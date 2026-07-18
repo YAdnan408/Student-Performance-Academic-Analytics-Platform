@@ -7,6 +7,17 @@ from app.modules.academic.exceptions import (
 )
 from app.models.enrollment import Enrollment
 from app.models.course_offering import CourseOffering
+from app.modules.analytics.grade_analytics import (
+    assessment_class_averages,
+    at_risk_by_grades,
+    best_weakest,
+    build_gpa_trend,
+    compute_cgpa,
+    generate_gpa_insights,
+    grade_distribution,
+)
+
+
 from datetime import date, timedelta
 
 
@@ -176,4 +187,126 @@ class AnalyticsService:
         return {
             "offering_id": offering_id,
             "weekly_trend": weekly_trend,
+        }
+
+    def get_student_gpa_analytics(self, db: Session, user_id: str) -> dict:
+        from app.modules.academic.grades_service import GradesService
+
+        courses = GradesService().get_student_grades_overview(db, user_id)
+        cgpa = compute_cgpa(courses)
+        best, weakest = best_weakest(courses)
+        return {
+            "cgpa": cgpa,
+            "graded_courses": sum(1 for c in courses if (c.get("graded_weight") or 0) > 0),
+            "total_courses": len(courses),
+            "trend": build_gpa_trend(courses),
+            "best_course": {
+                "course_code": best["course_code"],
+                "title": best["title"],
+                "grade_points": best["grade_points"],
+                "letter_grade": best["letter_grade"],
+            } if best else None,
+            "weakest_course": {
+                "course_code": weakest["course_code"],
+                "title": weakest["title"],
+                "grade_points": weakest["grade_points"],
+                "letter_grade": weakest["letter_grade"],
+            } if weakest else None,
+            "insights": generate_gpa_insights(courses, cgpa),
+        }
+
+    def get_student_dashboard(self, db: Session, user_id: str) -> dict:
+        attendance = self.get_student_analytics_overview(db, user_id)
+        gpa = self.get_student_gpa_analytics(db, user_id)
+        heatmap = self.get_attendance_heatmap(db, user_id)
+        return {"attendance": attendance, "gpa": gpa, "heatmap": heatmap}
+
+    def _instructor_offerings(self, db: Session, user_id: str) -> list:
+        from app.modules.academic.repository import AcademicRepository
+        acad_repo = AcademicRepository(db)
+        instructor = acad_repo.get_instructor_by_user_id(db, user_id)
+        if not instructor:
+            raise InstructorProfileNotFoundException()
+        rows = (
+            db.query(CourseOffering)
+            .options(joinedload(CourseOffering.course))
+            .filter(CourseOffering.instructor_id == instructor.id)
+            .all()
+        )
+        return rows
+
+    def get_instructor_grade_overview(self, db: Session, user_id: str) -> dict:
+        from app.modules.academic.grades_service import GradesService
+
+        gs = GradesService()
+        course_stats = []
+        for offering in self._instructor_offerings(db, user_id):
+            try:
+                gb = gs.get_offering_gradebook(db, user_id, str(offering.id))
+            except Exception:
+                continue
+            students = gb.get("students") or []
+            graded = [s for s in students if (s.get("graded_weight") or 0) > 0]
+            totals = [s["total_marks"] for s in graded]
+            class_avg = round(sum(totals) / len(totals), 1) if totals else None
+            at_risk = len(at_risk_by_grades(students))
+            below_60 = sum(1 for t in totals if t < 60)
+            below_pct = round(below_60 / len(graded) * 100, 1) if graded else 0
+            course_stats.append({
+                "offering_id": str(offering.id),
+                "course_code": offering.course.course_code,
+                "course_title": offering.course.title,
+                "enrolled_students": len(students),
+                "class_average": class_avg,
+                "students_graded": len(graded),
+                "students_at_risk": at_risk,
+                "below_60_percent": below_pct,
+            })
+        return {
+            "total_courses": len(course_stats),
+            "course_stats": course_stats,
+        }
+
+    def get_instructor_course_grade_analytics(self, db: Session, user_id: str, offering_id: str) -> dict:
+        from app.modules.academic.grades_service import GradesService
+
+        gb = GradesService().get_offering_gradebook(db, user_id, offering_id)
+        students = gb.get("students") or []
+        columns = gb.get("columns") or []
+        graded = [s for s in students if (s.get("graded_weight") or 0) > 0]
+        totals = [s["total_marks"] for s in graded]
+        class_avg = round(sum(totals) / len(totals), 1) if totals else None
+        ranked = sorted(graded, key=lambda s: s["total_marks"], reverse=True)
+        at_risk = at_risk_by_grades(students)
+        below_60 = sum(1 for t in totals if t < 60)
+        insight = None
+        if graded:
+            pct = round(below_60 / len(graded) * 100, 1)
+            insight = f"{pct}% of graded students scored below 60% in {gb.get('course_code')}."
+        bottom_ranked = sorted(graded, key=lambda s: s["total_marks"])[:5]
+        return {
+            "offering_id": offering_id,
+            "course_code": gb.get("course_code"),
+            "course_title": gb.get("title"),
+            "class_average": class_avg,
+            "students_graded": len(graded),
+            "total_students": len(students),
+            "distribution": grade_distribution(students),
+            "top_students": [
+                {"student_id": s["student_id"], "student_name": s["student_name"], "total_marks": s["total_marks"], "letter_grade": s.get("letter_grade")}
+                for s in ranked[:5]
+            ],
+            "bottom_students": [
+                {"student_id": s["student_id"], "student_name": s["student_name"], "total_marks": s["total_marks"], "letter_grade": s.get("letter_grade")}
+                for s in bottom_ranked
+            ],
+            "at_risk_students": at_risk[:10],
+            "assessment_averages": assessment_class_averages(columns, students),
+            "insight": insight,
+        }
+
+    def get_instructor_dashboard(self, db: Session, user_id: str) -> dict:
+        return {
+            "attendance": self.get_instructor_analytics_overview(db, user_id),
+            "grades": self.get_instructor_grade_overview(db, user_id),
         }

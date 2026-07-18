@@ -17,4 +17,6 @@ class CourseOffering(Base):
     instructor = relationship("Instructor", back_populates="course_offerings")
     semester = relationship("Semester", back_populates="offerings")
     enrollments = relationship("Enrollment", back_populates="course_offering")
-    assessments = relationship("Assessment", back_populates="course_offering")
+    assessments = relationship("Assessment", back_populates="course_offering", cascade="all, delete-orphan")
+    grading_policies = relationship("GradingPolicy", back_populates="course_offering", cascade="all, delete-orphan")
+    materials = relationship("CourseMaterial", back_populates="course_offering", cascade="all, delete-orphan")

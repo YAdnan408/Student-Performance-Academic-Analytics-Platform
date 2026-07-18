@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
+import AlertBanner from '@/components/ui/AlertBanner';
 import Spinner from '@/components/ui/Spinner';
 import { courseService } from '@/services/courseService';
 import { attendanceService } from '@/services/attendanceService';
@@ -141,13 +142,9 @@ const MarkAttendance = () => {
         </div>
 
         {message && (
-          <div className={`mb-6 p-4 rounded-xl border ${
-            message.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-              : 'bg-red-500/10 border-red-500/30 text-red-300'
-          }`}>
+          <AlertBanner type={message.type} className="mb-6">
             {message.text}
-          </div>
+          </AlertBanner>
         )}
 
         {dateData && (

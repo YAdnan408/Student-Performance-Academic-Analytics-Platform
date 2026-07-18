@@ -217,6 +217,7 @@ class AcademicService:
             result.append({
                 "enrollment_id": str(enrollment.id),
                 "enrolled_at": str(enrollment.enrolled_at) if enrollment.enrolled_at else None,
+                "offering_id": str(co.id),
                 "course": {
                     "id": str(course.id),
                     "course_code": course.course_code,
@@ -228,6 +229,7 @@ class AcademicService:
                     "end_date": str(course.end_date) if course.end_date else None,
                     "status": course.status,
                     "class_schedule": course.class_schedule,
+                    "marks_distribution": course.marks_distribution,
                 },
                 "instructor_name": f"{instructor.first_name} {instructor.last_name}" if instructor else None,
             })

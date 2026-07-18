@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/context/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import Spinner from '@/components/ui/Spinner';
@@ -10,7 +9,6 @@ import { StudentAttendanceResponse } from '@/types/attendance';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
 const StudentAttendance = () => {
-  const { user } = useAuth();
   const [data, setData] = useState<StudentAttendanceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

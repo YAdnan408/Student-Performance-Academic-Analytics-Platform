@@ -1,4 +1,4 @@
-from .enums import UserRole, CourseStatus, EnrollmentStatus, AttendanceStatus, AssessmentType
+from .enums import UserRole, CourseStatus, EnrollmentStatus, AttendanceStatus, AssessmentType, MaterialType
 from .user import User
 from .department import Department
 from .student import Student
@@ -10,6 +10,9 @@ from .enrollment import Enrollment
 from .attendance import Attendance
 from .assessment import Assessment
 from .grade import Grade
+from .grading_policy import GradingPolicy
+from .course_material import CourseMaterial
+from .notification import Notification
 from .gpa_record import GPARecord
 from .ml_prediction import MLPrediction
 from .recommendation import Recommendation

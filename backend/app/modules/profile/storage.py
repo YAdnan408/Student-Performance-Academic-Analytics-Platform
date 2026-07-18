@@ -8,7 +8,7 @@ from app.modules.profile.interfaces import IStorageProvider
 
 class LocalStorageProvider(IStorageProvider):
     def __init__(self, base_path: str = None):
-        self.base_path = base_path or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads")
+        self.base_path = base_path or str(settings.UPLOADS_DIR)
 
     async def upload(self, file: BinaryIO, filename: str) -> str:
         os.makedirs(self.base_path, exist_ok=True)

@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import Spinner from '@/components/ui/Spinner';
+import { RecentActivityList, UpcomingDeadlinesList } from '@/components/dashboard/ActivityPanels';
 import { analyticsService } from '@/services/analyticsService';
 import { InstructorDashboardAnalytics } from '@/types/analytics';
 
@@ -26,7 +27,7 @@ const InstructorDashboard = () => {
     { label: 'Active Courses', value: String(data?.attendance.total_courses ?? '—'), color: 'from-purple-500 to-blue-600' },
     { label: 'Total Students', value: String(data?.attendance.total_students ?? '—'), color: 'from-emerald-500 to-teal-600' },
     { label: 'At Risk (Grades)', value: String(totalAtRiskGrades || '—'), color: 'from-amber-500 to-orange-600' },
-    { label: 'Courses with Grades', value: String(data?.grades.total_courses ?? '—'), color: 'from-rose-500 to-pink-600' },
+    { label: 'Upcoming Deadlines', value: String(data?.pending_tasks ?? '—'), color: 'from-rose-500 to-pink-600' },
   ];
 
   if (loading) {
@@ -63,11 +64,11 @@ const InstructorDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-            <p className="text-purple-200/40 text-sm">No recent activity to display.</p>
+            <RecentActivityList items={data?.recent_activity || []} />
           </Card>
           <Card>
             <h2 className="text-lg font-semibold text-white mb-4">Upcoming Deadlines</h2>
-            <p className="text-purple-200/40 text-sm">No upcoming deadlines.</p>
+            <UpcomingDeadlinesList items={data?.upcoming_deadlines || []} />
           </Card>
         </div>
       </div>

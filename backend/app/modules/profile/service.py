@@ -31,11 +31,25 @@ class ProfileService(IProfileService):
 
     def update_student_profile(self, user: User, data: StudentProfileUpdate) -> Student:
         student = self.get_student_profile(user)
-        return self.repository.update_student(student, data)
+        updated = self.repository.update_student(student, data)
+        from app.modules.activity.logger import log_activity
+        log_activity(
+            self.repository.db, str(user.id), "profile_updated",
+            "updated profile",
+            link="/student/profile",
+        )
+        return updated
 
     def update_instructor_profile(self, user: User, data: InstructorProfileUpdate) -> Instructor:
         instructor = self.get_instructor_profile(user)
-        return self.repository.update_instructor(instructor, data)
+        updated = self.repository.update_instructor(instructor, data)
+        from app.modules.activity.logger import log_activity
+        log_activity(
+            self.repository.db, str(user.id), "profile_updated",
+            "updated profile",
+            link="/instructor/profile",
+        )
+        return updated
 
     async def upload_profile_photo(self, user: User, file: BinaryIO, filename: str) -> str:
         ext = os.path.splitext(filename)[1].lower()
@@ -45,4 +59,11 @@ class ProfileService(IProfileService):
         path = await self.storage.upload(file, filename)
         photo_url = self.storage.get_url(path)
         self.repository.update_profile_photo(user, photo_url)
+        from app.modules.activity.logger import log_activity
+        role = user.role.value if hasattr(user.role, "value") else str(user.role)
+        log_activity(
+            self.repository.db, str(user.id), "profile_photo_updated",
+            "updated profile photo",
+            link=f"/{role}/profile",
+        )
         return photo_url

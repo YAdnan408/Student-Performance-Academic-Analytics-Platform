@@ -358,6 +358,16 @@ class GradesService:
                     drop_lowest=drop,
                 ))
         db.commit()
+        course = offering.course
+        from app.modules.activity.logger import log_activity
+        log_activity(
+            db, user_id, "policy_updated",
+            f"updated grading policies for {course.course_code} — {course.title}",
+            course_code=course.course_code,
+            course_title=course.title,
+            offering_id=str(offering.id),
+            link=f"/instructor/courses/{offering.id}",
+        )
         return self.get_grading_policies(db, user_id, offering_id)
 
     # ── Assessments ────────────────────────────────────────────────
@@ -448,6 +458,19 @@ class GradesService:
                 link=f"/student/my-courses/{offering.id}",
             )
 
+        course = offering.course
+        from app.modules.activity.logger import log_activity
+        action = "assessment_published" if assessment.is_published else "assessment_created"
+        verb = "published" if assessment.is_published else "created"
+        log_activity(
+            db, user_id, action,
+            f"{verb} {assessment.title} for {course.course_code} — {course.title}",
+            course_code=course.course_code,
+            course_title=course.title,
+            offering_id=str(offering.id),
+            link=f"/instructor/courses/{offering.id}",
+        )
+
         return self._serialize_assessment(assessment)
 
     def update_assessment(self, db: Session, user_id: str, assessment_id: str, data) -> dict:
@@ -490,6 +513,26 @@ class GradesService:
                 message=f"A new {atype} has been published for {course.course_code} — {course.title}.",
                 link=f"/student/my-courses/{offering.id}",
             )
+            from app.modules.activity.logger import log_activity
+            log_activity(
+                db, user_id, "assessment_published",
+                f"published {assessment.title} for {course.course_code} — {course.title}",
+                course_code=course.course_code,
+                course_title=course.title,
+                offering_id=str(offering.id),
+                link=f"/instructor/courses/{offering.id}",
+            )
+        else:
+            course = offering.course
+            from app.modules.activity.logger import log_activity
+            log_activity(
+                db, user_id, "assessment_updated",
+                f"updated {assessment.title} for {course.course_code} — {course.title}",
+                course_code=course.course_code,
+                course_title=course.title,
+                offering_id=str(offering.id),
+                link=f"/instructor/courses/{offering.id}",
+            )
 
         return self._serialize_assessment(assessment)
 
@@ -510,10 +553,20 @@ class GradesService:
         assessment = db.query(Assessment).filter(Assessment.id == assessment_id).first()
         if not assessment:
             raise AssessmentNotFoundException()
-        self._get_owned_offering(db, user_id, str(assessment.course_offering_id))
+        offering = self._get_owned_offering(db, user_id, str(assessment.course_offering_id))
         assessment.file_url = file_url
         db.commit()
         db.refresh(assessment)
+        course = offering.course
+        from app.modules.activity.logger import log_activity
+        log_activity(
+            db, user_id, "assessment_file_uploaded",
+            f"uploaded file for {assessment.title} in {course.course_code} — {course.title}",
+            course_code=course.course_code,
+            course_title=course.title,
+            offering_id=str(assessment.course_offering_id),
+            link=f"/instructor/courses/{assessment.course_offering_id}",
+        )
         return self._serialize_assessment(assessment)
 
     # ── Grades ─────────────────────────────────────────────────────
@@ -594,6 +647,18 @@ class GradesService:
         db.commit()
         if notify and (created or updated):
             self._notify_students_grades(db, offering, assessment)
+        if created or updated:
+            course = offering.course
+            from app.modules.activity.logger import log_activity
+            verb = "published" if notify else "uploaded"
+            log_activity(
+                db, user_id, "grades_uploaded",
+                f"{verb} grades for {assessment.title} in {course.course_code} — {course.title}",
+                course_code=course.course_code,
+                course_title=course.title,
+                offering_id=str(offering.id),
+                link=f"/instructor/courses/{offering.id}",
+            )
         return {"created": created, "updated": updated, "errors": errors}
 
     def upsert_multi_grades(self, db: Session, user_id: str, offering_id: str, rows: list, notify: bool = False) -> dict:
@@ -654,6 +719,18 @@ class GradesService:
         db.commit()
         if notify and (created or updated):
             self._notify_students_grades(db, offering)
+        if created or updated:
+            course = offering.course
+            from app.modules.activity.logger import log_activity
+            verb = "published" if notify else "uploaded"
+            log_activity(
+                db, user_id, "grades_uploaded",
+                f"{verb} gradebook grades for {course.course_code} — {course.title}",
+                course_code=course.course_code,
+                course_title=course.title,
+                offering_id=str(offering.id),
+                link=f"/instructor/courses/{offering.id}",
+            )
         return {"created": created, "updated": updated, "errors": errors}
 
     def clear_all_grades(self, db: Session, user_id: str, offering_id: str) -> dict:
@@ -976,6 +1053,16 @@ class GradesService:
             title=f"New material: {material.title}",
             message=f"New course content uploaded for {course.course_code} — {course.title}.",
             link=f"/student/my-courses/{offering.id}",
+        )
+        from app.modules.activity.logger import log_activity
+        file_part = f" ({file_name})" if file_name else ""
+        log_activity(
+            db, user_id, "material_uploaded",
+            f"uploaded {material.title}{file_part} for {course.course_code} — {course.title}",
+            course_code=course.course_code,
+            course_title=course.title,
+            offering_id=str(offering.id),
+            link=f"/instructor/courses/{offering.id}",
         )
         return self._serialize_material(material)
 

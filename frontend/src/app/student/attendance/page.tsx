@@ -1,10 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useCallback, useState, useEffect } from 'react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
+import PdfPreviewModal from '@/components/reports/PdfPreviewModal';
 import { attendanceService } from '@/services/attendanceService';
+import { reportsService, reportFilename } from '@/services/reportsService';
 import { StudentAttendanceResponse } from '@/types/attendance';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
 
@@ -12,6 +15,16 @@ const StudentAttendance = () => {
   const [data, setData] = useState<StudentAttendanceResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState<{
+    offeringId: string;
+    courseCode: string;
+    title: string;
+  } | null>(null);
+
+  const fetchPdf = useCallback(() => {
+    if (!preview) return Promise.reject(new Error('No report selected'));
+    return reportsService.fetchPdf('course-attendance', preview.offeringId);
+  }, [preview]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -154,6 +167,17 @@ const StudentAttendance = () => {
                               {course.percentage}%
                             </p>
                           </div>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setPreview({
+                              offeringId: course.offering_id,
+                              courseCode: course.course_code,
+                              title: `Course Attendance — ${course.course_code}`,
+                            })}
+                          >
+                            PDF
+                          </Button>
                         </div>
                       </div>
                       <div className="mt-3 w-full bg-slate-700/50 rounded-full h-2">
@@ -233,6 +257,14 @@ const StudentAttendance = () => {
           </>
         )}
       </div>
+
+      <PdfPreviewModal
+        isOpen={!!preview}
+        onClose={() => setPreview(null)}
+        title={preview?.title || 'Report Preview'}
+        filename={preview ? reportFilename('course-attendance', preview.offeringId, preview.courseCode) : 'report.pdf'}
+        fetchPdf={fetchPdf}
+      />
     </DashboardLayout>
   );
 };

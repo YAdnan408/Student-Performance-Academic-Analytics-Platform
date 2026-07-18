@@ -1,15 +1,19 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
+import PdfPreviewModal from '@/components/reports/PdfPreviewModal';
 import { gradesService } from '@/services/gradesService';
 import { analyticsService } from '@/services/analyticsService';
+import { reportsService, reportFilename } from '@/services/reportsService';
 import { StudentGpaAnalytics } from '@/types/analytics';
 import { StudentCourseGrade } from '@/types/grades';
+import { ReportType } from '@/types/reports';
 import {
   LineChart,
   Line,
@@ -33,6 +37,17 @@ const StudentGradesPage = () => {
   const [grades, setGrades] = useState<StudentCourseGrade[]>([]);
   const [gpaAnalytics, setGpaAnalytics] = useState<StudentGpaAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [preview, setPreview] = useState<{
+    type: ReportType;
+    title: string;
+    offeringId?: string;
+    courseCode?: string;
+  } | null>(null);
+
+  const fetchPdf = useCallback(() => {
+    if (!preview) return Promise.reject(new Error('No report selected'));
+    return reportsService.fetchPdf(preview.type, preview.offeringId);
+  }, [preview]);
 
   useEffect(() => {
     (async () => {
@@ -61,9 +76,18 @@ const StudentGradesPage = () => {
   return (
     <DashboardLayout allowedRoles={['student']}>
       <div className="animate-fadeIn">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-white">My Grades</h1>
-          <p className="text-purple-200/60 mt-1">Course totals, CGPA, and performance analytics</p>
+        <div className="mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white">My Grades</h1>
+            <p className="text-purple-200/60 mt-1">Course totals, CGPA, and performance analytics</p>
+          </div>
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() => setPreview({ type: 'performance-summary', title: 'Academic Performance Summary' })}
+          >
+            Preview Summary PDF
+          </Button>
         </div>
 
         {loading ? (
@@ -143,42 +167,64 @@ const StudentGradesPage = () => {
               <div className="grid gap-5">
                 <h2 className="text-lg font-semibold text-white">Course Grades</h2>
                 {grades.map((g) => (
-                  <Link key={g.offering_id} href={`/student/my-courses/${g.offering_id}`}>
-                    <Card hover>
-                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                        <div>
-                          <div className="flex items-center gap-2 mb-1">
-                            <h3 className="text-lg font-semibold text-white">{g.title}</h3>
-                            <span className="text-xs font-mono text-purple-200/50">{g.course_code}</span>
+                  <Card key={g.offering_id}>
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <Link href={`/student/my-courses/${g.offering_id}`} className="flex-1">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <h3 className="text-lg font-semibold text-white">{g.title}</h3>
+                              <span className="text-xs font-mono text-purple-200/50">{g.course_code}</span>
+                            </div>
+                            {g.instructor_name && <p className="text-xs text-purple-200/40">{g.instructor_name}</p>}
+                            <div className="flex flex-wrap gap-2 mt-3">
+                              {Object.entries(g.components || {}).map(([type, c]) => (
+                                <span key={type} className="text-xs bg-white/5 text-purple-200/60 px-2 py-1 rounded-lg">
+                                  {TYPE_LABELS[type] || type}: {c.contribution == null ? '—' : `${c.contribution}/${c.weight}`}
+                                </span>
+                              ))}
+                            </div>
                           </div>
-                          {g.instructor_name && <p className="text-xs text-purple-200/40">{g.instructor_name}</p>}
-                          <div className="flex flex-wrap gap-2 mt-3">
-                            {Object.entries(g.components || {}).map(([type, c]) => (
-                              <span key={type} className="text-xs bg-white/5 text-purple-200/60 px-2 py-1 rounded-lg">
-                                {TYPE_LABELS[type] || type}: {c.contribution == null ? '—' : `${c.contribution}/${c.weight}`}
-                              </span>
-                            ))}
+                          <div className="text-right">
+                            <p className="text-3xl font-bold text-white">{g.total_marks}</p>
+                            <p className="text-xs text-purple-200/40 mt-1">
+                              {g.is_complete ? 'Final' : `Provisional · ${g.graded_weight}/${g.total_weight} graded`}
+                            </p>
+                            <div className="flex items-center justify-end gap-2 mt-1">
+                              {g.letter_grade ? <Badge variant={g.is_complete ? 'success' : 'warning'}>{g.letter_grade}</Badge> : <span className="text-xs text-purple-200/40">No grade</span>}
+                              {g.is_complete && g.grade_points != null && <span className="text-sm text-purple-200/60">{g.grade_points.toFixed(1)} GP</span>}
+                            </div>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-3xl font-bold text-white">{g.total_marks}</p>
-                          <p className="text-xs text-purple-200/40 mt-1">
-                            {g.is_complete ? 'Final' : `Provisional · ${g.graded_weight}/${g.total_weight} graded`}
-                          </p>
-                          <div className="flex items-center justify-end gap-2 mt-1">
-                            {g.letter_grade ? <Badge variant={g.is_complete ? 'success' : 'warning'}>{g.letter_grade}</Badge> : <span className="text-xs text-purple-200/40">No grade</span>}
-                            {g.is_complete && g.grade_points != null && <span className="text-sm text-purple-200/60">{g.grade_points.toFixed(1)} GP</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </Card>
-                  </Link>
+                      </Link>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setPreview({
+                          type: 'course-performance',
+                          title: `Course Performance — ${g.course_code}`,
+                          offeringId: g.offering_id,
+                          courseCode: g.course_code,
+                        })}
+                      >
+                        PDF
+                      </Button>
+                    </div>
+                  </Card>
                 ))}
               </div>
             )}
           </>
         )}
       </div>
+
+      <PdfPreviewModal
+        isOpen={!!preview}
+        onClose={() => setPreview(null)}
+        title={preview?.title || 'Report Preview'}
+        filename={preview ? reportFilename(preview.type, preview.offeringId, preview.courseCode) : 'report.pdf'}
+        fetchPdf={fetchPdf}
+      />
     </DashboardLayout>
   );
 };

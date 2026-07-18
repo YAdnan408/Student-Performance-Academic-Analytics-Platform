@@ -5,6 +5,7 @@ import { useAuth } from '@/context/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import Spinner from '@/components/ui/Spinner';
+import { RecentActivityList, UpcomingDeadlinesList } from '@/components/dashboard/ActivityPanels';
 import { analyticsService } from '@/services/analyticsService';
 import { StudentDashboardAnalytics } from '@/types/analytics';
 
@@ -38,7 +39,7 @@ const StudentDashboard = () => {
     },
     {
       label: 'Pending Tasks',
-      value: '—',
+      value: data ? String(data.pending_tasks ?? 0) : '—',
       color: 'from-rose-500 to-pink-600',
     },
   ];
@@ -77,11 +78,11 @@ const StudentDashboard = () => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <Card>
             <h2 className="text-lg font-semibold text-white mb-4">Recent Activity</h2>
-            <p className="text-purple-200/40 text-sm">No recent activity to display.</p>
+            <RecentActivityList items={data?.recent_activity || []} />
           </Card>
           <Card>
             <h2 className="text-lg font-semibold text-white mb-4">Upcoming Deadlines</h2>
-            <p className="text-purple-200/40 text-sm">No upcoming deadlines.</p>
+            <UpcomingDeadlinesList items={data?.upcoming_deadlines || []} />
           </Card>
         </div>
       </div>

@@ -14,7 +14,10 @@ import FileInput from '@/components/ui/FileInput';
 import { bdDatetimeLocalToIso, formatBdDateTime } from '@/lib/datetime';
 import { gradesService } from '@/services/gradesService';
 import { analyticsService } from '@/services/analyticsService';
+import { reportsService, reportFilename } from '@/services/reportsService';
+import PdfPreviewModal from '@/components/reports/PdfPreviewModal';
 import { CourseGradeAnalytics } from '@/types/analytics';
+import { ReportType } from '@/types/reports';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
 } from 'recharts';
@@ -53,6 +56,12 @@ const InstructorCourseHubPage = () => {
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<StatusMessage | null>(null);
+  const [reportPreview, setReportPreview] = useState<{ type: ReportType; title: string } | null>(null);
+
+  const fetchReportPdf = useCallback(() => {
+    if (!reportPreview) return Promise.reject(new Error('No report selected'));
+    return reportsService.fetchPdf(reportPreview.type, offeringId);
+  }, [reportPreview, offeringId]);
 
   const [showCreateAssessment, setShowCreateAssessment] = useState(false);
   const [gradeModalAssessment, setGradeModalAssessment] = useState<Assessment | null>(null);
@@ -513,6 +522,18 @@ const InstructorCourseHubPage = () => {
                 <Button variant="outline" onClick={saveGradebookEdits} loading={savingGradebook}>
                   Save Edits
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setReportPreview({ type: 'class-grades', title: `Class Grade Report — ${hub?.course_code || ''}` })}
+                >
+                  Grade Report PDF
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setReportPreview({ type: 'class-attendance', title: `Class Attendance Report — ${hub?.course_code || ''}` })}
+                >
+                  Attendance Report PDF
+                </Button>
                 <Button variant="danger" onClick={clearAllGrades}>Clear All Grades</Button>
               </div>
             </div>
@@ -864,6 +885,14 @@ const InstructorCourseHubPage = () => {
           <Button className="w-full" onClick={() => setShowCsvRulesModal(false)}>Got it</Button>
         </div>
       </Modal>
+
+      <PdfPreviewModal
+        isOpen={!!reportPreview}
+        onClose={() => setReportPreview(null)}
+        title={reportPreview?.title || 'Report Preview'}
+        filename={reportPreview ? reportFilename(reportPreview.type, offeringId, hub?.course_code) : 'report.pdf'}
+        fetchPdf={fetchReportPdf}
+      />
     </DashboardLayout>
   );
 };

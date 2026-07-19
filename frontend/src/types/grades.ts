@@ -72,6 +72,7 @@ export interface ComponentResult {
 export interface ComputedGrade {
   components: Record<string, ComponentResult>;
   total_marks: number;
+  scaled_total: number | null;
   graded_weight: number;
   total_weight: number;
   is_complete: boolean;

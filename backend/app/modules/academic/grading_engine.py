@@ -10,6 +10,7 @@ Raw marks are stored per assessment. This module:
 
 from __future__ import annotations
 from typing import Optional
+import math
 
 
 # Marks distribution keys → AssessmentType values
@@ -55,6 +56,11 @@ GRADE_SCALE = [
     (50, 52, "D-", 0.7),
     (0, 50, "F", 0.0),
 ]
+
+
+def scale_course_total(total: float) -> int:
+    """Round course total to nearest integer (.5 rounds up)."""
+    return int(math.floor(float(total) + 0.5))
 
 
 def letter_grade_for(score: float) -> tuple[str, float]:
@@ -174,12 +180,14 @@ def compute_student_course_grade(
             total += contribution
             graded_weight += weight
 
-    letter, points = letter_grade_for(total)
+    scaled = scale_course_total(total)
+    letter, points = letter_grade_for(scaled)
     full_weight = total_active_weight(marks_distribution)
     is_complete = full_weight > 0 and graded_weight >= full_weight - 0.01
     return {
         "components": components,
         "total_marks": round(total, 2),
+        "scaled_total": scaled if graded_weight > 0 else None,
         "graded_weight": round(graded_weight, 2),
         "total_weight": round(full_weight, 2),
         "is_complete": is_complete,

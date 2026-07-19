@@ -567,6 +567,7 @@ const InstructorCourseHubPage = () => {
                           </th>
                         ))}
                         <th className="py-2 px-2" title="Sum of scaled component marks (out of 100)">Total (/100)</th>
+                        <th className="py-2 px-2" title="Rounded total used for letter grade and GP">Scaled (/100)</th>
                         <th className="py-2 px-2">Letter</th>
                         <th className="py-2 px-2">GP</th>
                       </tr>
@@ -597,6 +598,7 @@ const InstructorCourseHubPage = () => {
                             </td>
                           ))}
                           <td className="py-1.5 px-2 text-white font-medium">{s.total_marks}</td>
+                          <td className="py-1.5 px-2 text-emerald-300 font-semibold">{s.scaled_total ?? '—'}</td>
                           <td className="py-1.5 px-2 text-purple-200">{s.letter_grade || '—'}</td>
                           <td className="py-1.5 px-2 text-purple-200/70">{s.grade_points ?? '—'}</td>
                         </tr>

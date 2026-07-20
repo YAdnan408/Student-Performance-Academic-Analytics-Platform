@@ -6,12 +6,14 @@ from app.modules.academic.exceptions import (
     AlreadyEnrolledException,
     StudentProfileNotFoundException,
     ScheduleClashException,
+    EnrollmentClosedException,
     InstructorNotAssignedException,
     EnrollmentNotFoundException,
     AttendanceAlreadyMarkedException,
     AttendanceNotFoundException,
     InstructorProfileNotFoundException,
 )
+from app.modules.academic.enrollment_window import enrollment_status_payload
 from app.models.user import User
 from app.models.instructor import Instructor
 from app.models.course_offering import CourseOffering
@@ -71,7 +73,7 @@ class AcademicService:
             instructor_name = ""
             if offering and offering.instructor:
                 instructor_name = f"{offering.instructor.first_name} {offering.instructor.last_name}"
-            result.append({
+            row = {
                 "id": str(course.id),
                 "course_code": course.course_code,
                 "title": course.title,
@@ -83,7 +85,9 @@ class AcademicService:
                 "marks_distribution": course.marks_distribution,
                 "class_schedule": course.class_schedule,
                 "instructor_name": instructor_name,
-            })
+            }
+            row.update(enrollment_status_payload(course))
+            result.append(row)
         return result
 
     def get_course_detail(self, db: Session, course_id: str, user_id: Optional[str] = None) -> Optional[dict]:
@@ -99,7 +103,7 @@ class AcademicService:
         if user_id:
             is_enrolled = self.repository.check_student_enrolled(db, user_id, course_id)
 
-        return {
+        detail = {
             "id": str(course.id),
             "course_code": course.course_code,
             "title": course.title,
@@ -118,6 +122,8 @@ class AcademicService:
                 "employee_id": instructor.employee_id if instructor else None,
             } if instructor else None,
         }
+        detail.update(enrollment_status_payload(course))
+        return detail
 
     def check_schedule_clash(self, db: Session, user_id: str, course_id: str) -> dict:
         student = self.repository.get_student_by_user_id(db, user_id)
@@ -162,6 +168,16 @@ class AcademicService:
 
         if course.status != CourseStatus.active.value:
             raise CourseNotFoundException("Course is not available for enrollment")
+
+        window = enrollment_status_payload(course)
+        if not window["enrollment_open"]:
+            if window["enrollment_status"] == "upcoming":
+                raise EnrollmentClosedException(
+                    "Enrollment has not opened yet for this course"
+                )
+            raise EnrollmentClosedException(
+                "Enrollment is closed for this course. Students must enroll before the course starts."
+            )
 
         offering = self.repository.get_course_offering(db, course_id)
         if not offering:

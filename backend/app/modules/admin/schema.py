@@ -10,6 +10,8 @@ class CourseCreateRequest(BaseModel):
     duration: str = "16 weeks"
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    enrollment_opens_at: Optional[str] = None
+    enrollment_closes_at: Optional[str] = None
     marks_distribution: Optional[dict[str, Any]] = None
     class_schedule: Optional[dict[str, Any]] = None
 
@@ -22,6 +24,8 @@ class CourseUpdateRequest(BaseModel):
     duration: Optional[str] = None
     start_date: Optional[str] = None
     end_date: Optional[str] = None
+    enrollment_opens_at: Optional[str] = None
+    enrollment_closes_at: Optional[str] = None
     marks_distribution: Optional[dict[str, Any]] = None
     class_schedule: Optional[dict[str, Any]] = None
     instructor_id: Optional[str] = None

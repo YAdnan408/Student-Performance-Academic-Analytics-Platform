@@ -11,3 +11,4 @@ dist/
 infrastructure/postgres_data/
 backend/uploads/
 backend/app/uploads/
+backend/ml_models/

@@ -18,6 +18,9 @@ import { reportsService, reportFilename } from '@/services/reportsService';
 import PdfPreviewModal from '@/components/reports/PdfPreviewModal';
 import { CourseGradeAnalytics } from '@/types/analytics';
 import { ReportType } from '@/types/reports';
+import { intelligenceService } from '@/services/intelligenceService';
+import { InstructorCourseRisk } from '@/types/intelligence';
+import { RiskBadge } from '@/components/intelligence/InsightPanels';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
 } from 'recharts';
@@ -32,6 +35,16 @@ import {
 
 type Tab = 'policies' | 'assessments' | 'grades' | 'materials';
 type StatusMessage = { type: 'success' | 'error'; text: string };
+type TrainModalState =
+  | { type: 'success'; models: string[]; version: string }
+  | { type: 'error'; text: string };
+
+const MODEL_LABELS: Record<string, string> = {
+  logreg: 'Logistic Regression',
+  rf: 'Random Forest',
+  xgb: 'XGBoost',
+};
+
 
 const TYPE_LABELS: Record<string, string> = {
   quiz: 'Quiz',
@@ -53,6 +66,9 @@ const InstructorCourseHubPage = () => {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [gradebook, setGradebook] = useState<GradebookResponse | null>(null);
   const [gradeAnalytics, setGradeAnalytics] = useState<CourseGradeAnalytics | null>(null);
+  const [courseRisk, setCourseRisk] = useState<InstructorCourseRisk | null>(null);
+  const [riskLoading, setRiskLoading] = useState(false);
+  const [trainModal, setTrainModal] = useState<TrainModalState | null>(null);
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<StatusMessage | null>(null);
@@ -153,8 +169,49 @@ const InstructorCourseHubPage = () => {
     if (tab === 'grades') {
       loadGradebook().catch(console.error);
       analyticsService.getCourseGradeAnalytics(offeringId).then(setGradeAnalytics).catch(console.error);
+      setRiskLoading(true);
+      intelligenceService.getCourseRisk(offeringId)
+        .then(setCourseRisk)
+        .catch(console.error)
+        .finally(() => setRiskLoading(false));
     }
   }, [tab, loadGradebook, offeringId]);
+
+  const refreshCourseRisk = async () => {
+    try {
+      setRiskLoading(true);
+      const data = await intelligenceService.refreshCourseRisk(offeringId);
+      setCourseRisk(data);
+      setMessage({ type: 'success', text: `Risk predictions refreshed (${data.refreshed ?? data.predictions.length} students)` });
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { detail?: string } } };
+      setMessage({ type: 'error', text: ax.response?.data?.detail || 'Failed to refresh risk predictions' });
+    } finally {
+      setRiskLoading(false);
+    }
+  };
+
+  const trainMlModels = async () => {
+    try {
+      setRiskLoading(true);
+      const result = await intelligenceService.trainModels();
+      setTrainModal({
+        type: 'success',
+        models: result.models_trained,
+        version: result.model_version,
+      });
+      const data = await intelligenceService.refreshCourseRisk(offeringId);
+      setCourseRisk(data);
+    } catch (err: unknown) {
+      const ax = err as { response?: { data?: { detail?: string } } };
+      setTrainModal({
+        type: 'error',
+        text: ax.response?.data?.detail || 'Training failed. You need at least 8 completed courses with both pass and at-risk outcomes.',
+      });
+    } finally {
+      setRiskLoading(false);
+    }
+  };
 
   const savePolicies = async () => {
     try {
@@ -663,6 +720,76 @@ const InstructorCourseHubPage = () => {
                 )}
               </div>
             )}
+
+            <div className="space-y-4 pt-6 mt-2 border-t border-white/10">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-lg font-semibold text-white">ML Performance Risk</h3>
+                  <p className="text-xs text-purple-200/50">
+                    Hybrid rules + Logistic Regression / Random Forest / XGBoost
+                    {courseRisk?.ml_model_ready ? ' · ML model ready' : ' · using rule-based fallback until trained'}
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" loading={riskLoading} onClick={trainMlModels}>
+                    Train Models
+                  </Button>
+                  <Button size="sm" variant="secondary" loading={riskLoading} onClick={refreshCourseRisk}>
+                    Refresh Risk
+                  </Button>
+                </div>
+              </div>
+              {courseRisk && (
+                <div className="grid grid-cols-3 gap-3 mb-2">
+                  <Card>
+                    <p className="text-xs text-red-300/70">High</p>
+                    <p className="text-2xl font-bold text-red-400">{courseRisk.distribution.high}</p>
+                  </Card>
+                  <Card>
+                    <p className="text-xs text-amber-300/70">Medium</p>
+                    <p className="text-2xl font-bold text-amber-300">{courseRisk.distribution.medium}</p>
+                  </Card>
+                  <Card>
+                    <p className="text-xs text-emerald-300/70">Low</p>
+                    <p className="text-2xl font-bold text-emerald-400">{courseRisk.distribution.low}</p>
+                  </Card>
+                </div>
+              )}
+              <Card>
+                {riskLoading && !courseRisk ? (
+                  <div className="flex justify-center py-6"><Spinner /></div>
+                ) : !courseRisk || courseRisk.predictions.length === 0 ? (
+                  <p className="text-purple-200/40 text-sm text-center py-6">No risk predictions yet. Click Refresh Risk.</p>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-left text-purple-200/50 border-b border-white/10">
+                          <th className="py-2 pr-3">Student</th>
+                          <th className="py-2 px-2">ID</th>
+                          <th className="py-2 px-2">Score</th>
+                          <th className="py-2 px-2">Level</th>
+                          <th className="py-2 px-2">Top factors</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {courseRisk.predictions.map((p) => (
+                          <tr key={p.id} className="border-b border-white/5">
+                            <td className="py-2 pr-3 text-white">{p.student_name || '—'}</td>
+                            <td className="py-2 px-2 font-mono text-purple-200/60">{p.student_code || '—'}</td>
+                            <td className="py-2 px-2 text-white">{(p.risk_score * 100).toFixed(0)}%</td>
+                            <td className="py-2 px-2"><RiskBadge level={p.risk_level} /></td>
+                            <td className="py-2 px-2 text-purple-200/60 max-w-xs truncate">
+                              {(p.explanation?.top_factors || []).slice(0, 2).map((f) => f.detail).join(' · ') || '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </Card>
+            </div>
           </div>
         )}
 
@@ -885,6 +1012,39 @@ const InstructorCourseHubPage = () => {
           )}
 
           <Button className="w-full" onClick={() => setShowCsvRulesModal(false)}>Got it</Button>
+        </div>
+      </Modal>
+
+      <Modal
+        isOpen={!!trainModal}
+        onClose={() => setTrainModal(null)}
+        title={trainModal?.type === 'success' ? 'Models Trained Successfully' : 'Training Failed'}
+      >
+        <div className="space-y-4">
+          {trainModal?.type === 'success' ? (
+            <>
+              <p className="text-sm text-purple-100/90 leading-relaxed">
+                Performance risk models were updated successfully. Risk scores for this class have been refreshed.
+              </p>
+              <div className="rounded-xl border border-white/10 bg-white/5 p-3 space-y-2">
+                <p className="text-[11px] uppercase tracking-wide text-purple-200/50">Models included</p>
+                <ul className="space-y-1.5">
+                  {trainModal.models.map((key) => (
+                    <li key={key} className="flex items-center gap-2 text-sm text-emerald-300/90">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                      {MODEL_LABELS[key] || key}
+                    </li>
+                  ))}
+                </ul>
+                <p className="text-xs text-purple-200/40 pt-1">Version: {trainModal.version}</p>
+              </div>
+            </>
+          ) : (
+            <p className="text-sm text-red-300 leading-relaxed">{trainModal?.text}</p>
+          )}
+          <Button className="w-full" onClick={() => setTrainModal(null)}>
+            Got it
+          </Button>
         </div>
       </Modal>
 

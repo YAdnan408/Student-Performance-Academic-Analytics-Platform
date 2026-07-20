@@ -4,22 +4,48 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '@/context/AuthContext';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
+import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import { RecentActivityList, UpcomingDeadlinesList } from '@/components/dashboard/ActivityPanels';
+import { RecommendationsList, RiskPredictionsList } from '@/components/intelligence/InsightPanels';
 import { analyticsService } from '@/services/analyticsService';
+import { intelligenceService } from '@/services/intelligenceService';
 import { StudentDashboardAnalytics } from '@/types/analytics';
+import { StudentInsights } from '@/types/intelligence';
 
 const StudentDashboard = () => {
   const { user } = useAuth();
   const [data, setData] = useState<StudentDashboardAnalytics | null>(null);
+  const [insights, setInsights] = useState<StudentInsights | null>(null);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    const [dash, intel] = await Promise.all([
+      analyticsService.getStudentDashboard(),
+      intelligenceService.getStudentInsights().catch(() => null),
+    ]);
+    setData(dash);
+    setInsights(intel);
+  };
 
   useEffect(() => {
-    analyticsService.getStudentDashboard()
-      .then(setData)
+    load()
       .catch(console.error)
       .finally(() => setLoading(false));
   }, []);
+
+  const handleRefreshInsights = async () => {
+    try {
+      setRefreshing(true);
+      const intel = await intelligenceService.refreshStudentInsights();
+      setInsights(intel);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const stats = [
     {
@@ -38,8 +64,8 @@ const StudentDashboard = () => {
       color: 'from-amber-500 to-orange-600',
     },
     {
-      label: 'Pending Tasks',
-      value: data ? String(data.pending_tasks ?? 0) : '—',
+      label: 'High Risk Courses',
+      value: insights ? String(insights.summary?.high_risk ?? 0) : '—',
       color: 'from-rose-500 to-pink-600',
     },
   ];
@@ -73,6 +99,22 @@ const StudentDashboard = () => {
               </div>
             </Card>
           ))}
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          <Card>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-white">Performance Risk</h2>
+              <Button size="sm" variant="ghost" loading={refreshing} onClick={handleRefreshInsights}>
+                Refresh
+              </Button>
+            </div>
+            <RiskPredictionsList items={insights?.predictions || []} />
+          </Card>
+          <Card>
+            <h2 className="text-lg font-semibold text-white mb-4">Recommendations</h2>
+            <RecommendationsList items={insights?.recommendations || []} />
+          </Card>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

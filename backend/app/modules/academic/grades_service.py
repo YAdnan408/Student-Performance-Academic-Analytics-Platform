@@ -659,6 +659,11 @@ class GradesService:
                 offering_id=str(offering.id),
                 link=f"/instructor/courses/{offering.id}",
             )
+            try:
+                from app.modules.intelligence.service import IntelligenceService
+                IntelligenceService().refresh_offering_by_system(db, str(offering.id))
+            except Exception:
+                pass
         return {"created": created, "updated": updated, "errors": errors}
 
     def upsert_multi_grades(self, db: Session, user_id: str, offering_id: str, rows: list, notify: bool = False) -> dict:
@@ -731,6 +736,11 @@ class GradesService:
                 offering_id=str(offering.id),
                 link=f"/instructor/courses/{offering.id}",
             )
+            try:
+                from app.modules.intelligence.service import IntelligenceService
+                IntelligenceService().refresh_offering_by_system(db, str(offering.id))
+            except Exception:
+                pass
         return {"created": created, "updated": updated, "errors": errors}
 
     def clear_all_grades(self, db: Session, user_id: str, offering_id: str) -> dict:

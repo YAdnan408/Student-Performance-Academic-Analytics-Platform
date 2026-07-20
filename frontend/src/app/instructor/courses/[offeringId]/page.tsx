@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -21,6 +21,7 @@ import { ReportType } from '@/types/reports';
 import { intelligenceService } from '@/services/intelligenceService';
 import { InstructorCourseRisk } from '@/types/intelligence';
 import { RiskBadge } from '@/components/intelligence/InsightPanels';
+import CourseChat from '@/components/chat/CourseChat';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line,
 } from 'recharts';
@@ -33,7 +34,7 @@ import {
   OfferingHub,
 } from '@/types/grades';
 
-type Tab = 'policies' | 'assessments' | 'grades' | 'materials';
+type Tab = 'policies' | 'assessments' | 'grades' | 'materials' | 'chat';
 type StatusMessage = { type: 'success' | 'error'; text: string };
 type TrainModalState =
   | { type: 'success'; models: string[]; version: string }
@@ -58,9 +59,15 @@ const TYPE_LABELS: Record<string, string> = {
 const InstructorCourseHubPage = () => {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const offeringId = params.offeringId as string;
 
-  const [tab, setTab] = useState<Tab>('assessments');
+  const initialTab = (searchParams.get('tab') as Tab | null);
+  const [tab, setTab] = useState<Tab>(
+    initialTab && ['policies', 'assessments', 'grades', 'materials', 'chat'].includes(initialTab)
+      ? initialTab
+      : 'assessments',
+  );
   const [hub, setHub] = useState<OfferingHub | null>(null);
   const [policies, setPolicies] = useState<GradingPolicy[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
@@ -149,6 +156,13 @@ const InstructorCourseHubPage = () => {
     const data = await gradesService.listMaterials(offeringId);
     setMaterials(data);
   }, [offeringId]);
+
+  useEffect(() => {
+    const t = searchParams.get('tab') as Tab | null;
+    if (t && ['policies', 'assessments', 'grades', 'materials', 'chat'].includes(t)) {
+      setTab(t);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     (async () => {
@@ -408,6 +422,7 @@ const InstructorCourseHubPage = () => {
             { id: 'assessments' as Tab, label: 'Assessments' },
             { id: 'grades' as Tab, label: 'Grades' },
             { id: 'materials' as Tab, label: 'Materials' },
+            { id: 'chat' as Tab, label: 'Chat' },
           ]).map((t) => (
             <button
               key={t.id}
@@ -832,6 +847,8 @@ const InstructorCourseHubPage = () => {
             )}
           </div>
         )}
+
+        {tab === 'chat' && <CourseChat offeringId={offeringId} />}
       </div>
 
       <Modal isOpen={showCreateAssessment} onClose={() => { setShowCreateAssessment(false); setNewAssessmentFile(null); }} title="Create Assessment">

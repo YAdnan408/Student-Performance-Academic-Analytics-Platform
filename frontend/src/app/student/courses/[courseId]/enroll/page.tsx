@@ -9,6 +9,7 @@ import Spinner from '@/components/ui/Spinner';
 import Input from '@/components/ui/Input';
 import { courseService } from '@/services/courseService';
 import { CourseDetail } from '@/types/course';
+import { formatBdDateTime } from '@/lib/datetime';
 
 type PaymentMethod = 'stripe' | 'banking' | 'bkash' | 'nagad';
 
@@ -84,6 +85,14 @@ const EnrollPage = () => {
 
   const handlePayment = async () => {
     if (!selectedMethod) return;
+    if (course && course.enrollment_open === false) {
+      setError(
+        course.enrollment_status === 'upcoming'
+          ? 'Enrollment has not opened yet for this course'
+          : 'Enrollment is closed for this course'
+      );
+      return;
+    }
     setProcessing(true);
     setError(null);
 
@@ -160,6 +169,45 @@ const EnrollPage = () => {
           <p className="text-red-400 text-center py-8">{error || 'Course not found'}</p>
           <div className="text-center">
             <Button variant="outline" onClick={() => router.push('/student/courses')}>Back to Courses</Button>
+          </div>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  if (course.is_enrolled) {
+    return (
+      <DashboardLayout allowedRoles={['student']}>
+        <Card>
+          <p className="text-emerald-400 text-center py-8">You are already enrolled in this course.</p>
+          <div className="text-center">
+            <Button variant="outline" onClick={() => router.push('/student/courses')}>Back to Courses</Button>
+          </div>
+        </Card>
+      </DashboardLayout>
+    );
+  }
+
+  if (course.enrollment_open === false) {
+    return (
+      <DashboardLayout allowedRoles={['student']}>
+        <Card>
+          <p className="text-amber-400 text-center py-4 font-medium">
+            {course.enrollment_status === 'upcoming'
+              ? 'Enrollment has not opened yet'
+              : 'Enrollment is closed for this course'}
+          </p>
+          <p className="text-sm text-purple-200/60 text-center mb-6">
+            {course.enrollment_status === 'upcoming' && course.enrollment_opens_at
+              ? `Opens ${formatBdDateTime(course.enrollment_opens_at)}.`
+              : course.enrollment_closes_at
+                ? `Closed ${formatBdDateTime(course.enrollment_closes_at)}. Students must enroll before the course starts.`
+                : 'Students must enroll before the course starts.'}
+          </p>
+          <div className="text-center">
+            <Button variant="outline" onClick={() => router.push(`/student/courses/${params.courseId}`)}>
+              Back to Course Details
+            </Button>
           </div>
         </Card>
       </DashboardLayout>

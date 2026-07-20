@@ -9,6 +9,7 @@ import Spinner from '@/components/ui/Spinner';
 import Badge from '@/components/ui/Badge';
 import { courseService } from '@/services/courseService';
 import { CourseDetail } from '@/types/course';
+import { formatBdDateTime } from '@/lib/datetime';
 
 const CourseDetailPage = () => {
   const params = useParams();
@@ -93,6 +94,21 @@ const CourseDetailPage = () => {
     { key: 'lab', label: 'Lab', color: 'from-rose-500 to-pink-600', value: md?.lab },
     { key: 'attendance', label: 'Attendance', color: 'from-cyan-500 to-sky-600', value: md?.attendance },
   ];
+
+  const enrollmentBlocked =
+    !course.is_enrolled &&
+    course.status !== 'archived' &&
+    course.enrollment_open === false;
+
+  const enrollButtonLabel = course.is_enrolled
+    ? 'Already Enrolled'
+    : course.status === 'archived'
+      ? 'Course Archived'
+      : course.enrollment_status === 'upcoming'
+        ? 'Enrollment Not Open Yet'
+        : course.enrollment_open === false
+          ? 'Enrollment Closed'
+          : 'Enroll Now';
 
   return (
     <DashboardLayout allowedRoles={['student']}>
@@ -232,9 +248,9 @@ const CourseDetailPage = () => {
                 size="lg"
                 onClick={handleEnrollClick}
                 loading={checkingClash}
-                disabled={course.is_enrolled || course.status === 'archived'}
+                disabled={course.is_enrolled || course.status === 'archived' || course.enrollment_open === false}
               >
-                {course.is_enrolled ? 'Already Enrolled' : course.status === 'archived' ? 'Course Archived' : 'Enroll Now'}
+                {enrollButtonLabel}
               </Button>
               {clashError && (
                 <div className="mt-3 p-3 bg-red-500/10 border border-red-500/30 rounded-xl">
@@ -254,6 +270,22 @@ const CourseDetailPage = () => {
               {course.status === 'archived' && !course.is_enrolled && (
                 <p className="text-xs text-amber-400/70 text-center mt-2">
                   This course is no longer available
+                </p>
+              )}
+              {enrollmentBlocked && course.enrollment_status === 'upcoming' && (
+                <p className="text-xs text-amber-400/70 text-center mt-2">
+                  Enrollment opens {formatBdDateTime(course.enrollment_opens_at)}.
+                </p>
+              )}
+              {enrollmentBlocked && course.enrollment_status === 'closed' && (
+                <p className="text-xs text-amber-400/70 text-center mt-2">
+                  Enrollment closed{course.enrollment_closes_at ? ` on ${formatBdDateTime(course.enrollment_closes_at)}` : ''}.
+                  Students must enroll before the course starts.
+                </p>
+              )}
+              {course.enrollment_open && course.enrollment_closes_at && !course.is_enrolled && (
+                <p className="text-xs text-purple-200/50 text-center mt-2">
+                  Enrollment closes {formatBdDateTime(course.enrollment_closes_at)}
                 </p>
               )}
               <p className="text-xs text-purple-200/40 text-center mt-3">

@@ -10,6 +10,12 @@ import Badge from '@/components/ui/Badge';
 import Spinner from '@/components/ui/Spinner';
 import { adminService } from '@/services/adminService';
 import { AdminCourse, AdminInstructor, AdminUser, CourseCreateData, CourseUpdateData } from '@/types/admin';
+import {
+  bdDatetimeLocalToIso,
+  defaultEnrollmentClosesLocal,
+  formatBdDateTime,
+  isoToBdDatetimeLocal,
+} from '@/lib/datetime';
 
 type Tab = 'courses' | 'users';
 
@@ -184,12 +190,32 @@ const CoursesTab = () => {
                     <Badge variant={course.status === 'archived' ? 'danger' : 'success'}>
                       {course.status === 'archived' ? 'Archived' : 'Active'}
                     </Badge>
+                    {course.status === 'active' && course.enrollment_status && (
+                      <Badge
+                        variant={
+                          course.enrollment_status === 'open'
+                            ? 'success'
+                            : course.enrollment_status === 'upcoming'
+                              ? 'warning'
+                              : 'danger'
+                        }
+                      >
+                        {course.enrollment_status === 'open'
+                          ? 'Enrollment open'
+                          : course.enrollment_status === 'upcoming'
+                            ? 'Enrollment upcoming'
+                            : 'Enrollment closed'}
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-sm text-purple-200/60 line-clamp-1 mb-2">{course.description}</p>
-                  <div className="flex items-center gap-4 text-xs text-purple-200/50">
+                  <div className="flex flex-wrap items-center gap-4 text-xs text-purple-200/50">
                     <span>Cost: ৳{course.cost?.toLocaleString() || '—'}</span>
                     <span>Duration: {course.duration || '—'}</span>
                     <span>Instructor: {course.instructor_name || 'Not assigned'}</span>
+                    {course.enrollment_closes_at && (
+                      <span>Closes: {formatBdDateTime(course.enrollment_closes_at)}</span>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-2 ml-4">
@@ -287,6 +313,8 @@ const AddCourseModal = ({
     duration: '16 weeks',
     start_date: '',
     end_date: '',
+    enrollment_opens_at: '',
+    enrollment_closes_at: '',
     marks_distribution: { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
     class_schedule: { days: '', time_slot: '' },
   });
@@ -304,10 +332,16 @@ const AddCourseModal = ({
     if (!form.course_code || !form.title) return;
     setSubmitting(true);
     try {
-      const payload = { ...form };
+      const payload: CourseCreateData = {
+        ...form,
+        enrollment_opens_at: bdDatetimeLocalToIso(form.enrollment_opens_at || '') || undefined,
+        enrollment_closes_at: bdDatetimeLocalToIso(form.enrollment_closes_at || '') || undefined,
+      };
       if (!payload.class_schedule?.days && !payload.class_schedule?.time_slot) {
         delete payload.class_schedule;
       }
+      if (!payload.enrollment_opens_at) delete payload.enrollment_opens_at;
+      if (!payload.enrollment_closes_at) delete payload.enrollment_closes_at;
       const result = await adminService.createCourse(payload);
       if (selectedInstructorId) {
         await adminService.assignInstructor(result.id, selectedInstructorId);
@@ -322,6 +356,8 @@ const AddCourseModal = ({
         duration: '16 weeks',
         start_date: '',
         end_date: '',
+        enrollment_opens_at: '',
+        enrollment_closes_at: '',
         marks_distribution: { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
         class_schedule: { days: '', time_slot: '' },
       });
@@ -337,6 +373,17 @@ const AddCourseModal = ({
     setForm((prev) => ({
       ...prev,
       marks_distribution: { ...prev.marks_distribution, [field]: value },
+    }));
+  };
+
+  const handleStartDateChange = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      start_date: value,
+      enrollment_closes_at:
+        prev.enrollment_closes_at || !value
+          ? prev.enrollment_closes_at
+          : defaultEnrollmentClosesLocal(value),
     }));
   };
 
@@ -383,7 +430,7 @@ const AddCourseModal = ({
             label="Start Date"
             type="date"
             value={form.start_date}
-            onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+            onChange={(e) => handleStartDateChange(e.target.value)}
           />
           <Input
             label="End Date"
@@ -391,6 +438,27 @@ const AddCourseModal = ({
             value={form.end_date}
             onChange={(e) => setForm({ ...form, end_date: e.target.value })}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-purple-200 mb-1.5">Enrollment Window (Bangladesh time)</label>
+          <p className="text-xs text-purple-200/40 mb-2">
+            Defaults to closing 24 hours before start. Leave open empty to allow enrollment immediately.
+          </p>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Opens at"
+              type="datetime-local"
+              value={form.enrollment_opens_at || ''}
+              onChange={(e) => setForm({ ...form, enrollment_opens_at: e.target.value })}
+            />
+            <Input
+              label="Closes at"
+              type="datetime-local"
+              value={form.enrollment_closes_at || ''}
+              onChange={(e) => setForm({ ...form, enrollment_closes_at: e.target.value })}
+            />
+          </div>
         </div>
 
         <div>
@@ -495,6 +563,8 @@ const EditCourseModal = ({
     duration: '16 weeks',
     start_date: '',
     end_date: '',
+    enrollment_opens_at: '',
+    enrollment_closes_at: '',
     marks_distribution: { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
     class_schedule: { days: '', time_slot: '' },
     instructor_id: null,
@@ -511,6 +581,8 @@ const EditCourseModal = ({
         duration: course.duration || '16 weeks',
         start_date: course.start_date || '',
         end_date: course.end_date || '',
+        enrollment_opens_at: isoToBdDatetimeLocal(course.enrollment_opens_at),
+        enrollment_closes_at: isoToBdDatetimeLocal(course.enrollment_closes_at),
         marks_distribution: course.marks_distribution as CourseUpdateData['marks_distribution'] || { mid: 25, final: 40, quiz: 10, assignments: 10, lab: 10, attendance: 5 },
         class_schedule: course.class_schedule as CourseUpdateData['class_schedule'] || { days: '', time_slot: '' },
         instructor_id: course.instructor_id || null,
@@ -522,7 +594,11 @@ const EditCourseModal = ({
     if (!form.course_code || !form.title) return;
     setSubmitting(true);
     try {
-      const payload = { ...form };
+      const payload: CourseUpdateData = {
+        ...form,
+        enrollment_opens_at: bdDatetimeLocalToIso(form.enrollment_opens_at || '') || '',
+        enrollment_closes_at: bdDatetimeLocalToIso(form.enrollment_closes_at || '') || '',
+      };
       if (!payload.class_schedule?.days && !payload.class_schedule?.time_slot) {
         delete payload.class_schedule;
       }
@@ -594,6 +670,24 @@ const EditCourseModal = ({
             value={form.end_date || ''}
             onChange={(e) => setForm({ ...form, end_date: e.target.value })}
           />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-purple-200 mb-1.5">Enrollment Window (Bangladesh time)</label>
+          <div className="grid grid-cols-2 gap-4">
+            <Input
+              label="Opens at"
+              type="datetime-local"
+              value={form.enrollment_opens_at || ''}
+              onChange={(e) => setForm({ ...form, enrollment_opens_at: e.target.value })}
+            />
+            <Input
+              label="Closes at"
+              type="datetime-local"
+              value={form.enrollment_closes_at || ''}
+              onChange={(e) => setForm({ ...form, enrollment_closes_at: e.target.value })}
+            />
+          </div>
         </div>
 
         <div>

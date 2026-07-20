@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button';
 import Spinner from '@/components/ui/Spinner';
 import { courseService } from '@/services/courseService';
 import { Course } from '@/types/course';
+import { formatBdDateTime } from '@/lib/datetime';
 
 const CourseListingPage = () => {
   const router = useRouter();
@@ -109,9 +110,22 @@ const CourseListingPage = () => {
                       {course.duration || 'TBD'}
                     </div>
                     <div className="flex items-center justify-between pt-2">
-                      <span className="text-lg font-bold text-white">
-                        ৳{course.cost?.toLocaleString() || '—'}
-                      </span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="text-lg font-bold text-white">
+                          ৳{course.cost?.toLocaleString() || '—'}
+                        </span>
+                        {course.enrollment_status === 'open' && course.enrollment_closes_at && (
+                          <span className="text-[10px] text-emerald-400/80">
+                            Closes {formatBdDateTime(course.enrollment_closes_at)}
+                          </span>
+                        )}
+                        {course.enrollment_status === 'upcoming' && (
+                          <span className="text-[10px] text-amber-400/80">Enrollment not open yet</span>
+                        )}
+                        {course.enrollment_status === 'closed' && (
+                          <span className="text-[10px] text-red-400/80">Enrollment closed</span>
+                        )}
+                      </div>
                       <Button
                         size="sm"
                         onClick={() => router.push(`/student/courses/${course.id}`)}

@@ -57,20 +57,37 @@ def generate_recommendations(feature_row: dict, risk: dict, limit: int = 8) -> l
     elif ratio < 0.4 and float(f.get("missing_midterm") or 0) >= 1:
         add("completion", "low", f"Only {ratio * 100:.0f}% of {code} is graded so far. Stay consistent on quizzes, assignments, and labs before major exams.")
 
+    attendance_recorded = float(f.get("missing_attendance") or 0) < 1.0
+    attendance_at_risk = attendance_recorded and att < 70
+    risk_source = (
+        "ml_based"
+        if (risk.get("model_version") or "").startswith(("logreg", "rf", "xgb", "ensemble"))
+        else "rule_based"
+    )
     if risk_level == "high":
-        add(
-            "risk",
-            "high",
-            f"You are currently high risk in {code} — {title}. Improve attendance and focus on the weakest graded components first.",
-            source="ml_based" if (risk.get("model_version") or "").startswith(("logreg", "rf", "xgb", "ensemble")) else "rule_based",
-        )
+        if attendance_at_risk:
+            high_msg = (
+                f"You are currently high risk in {code} — {title}. "
+                "Improve attendance and focus on the weakest graded components first."
+            )
+        else:
+            high_msg = (
+                f"You are currently high risk in {code} — {title}. "
+                "Focus on the weakest graded components first."
+            )
+        add("risk", "high", high_msg, source=risk_source)
     elif risk_level == "medium":
-        add(
-            "risk",
-            "medium",
-            f"Medium academic risk detected for {code}. Small improvements in attendance and assessments can lower your risk.",
-            source="ml_based" if (risk.get("model_version") or "").startswith(("logreg", "rf", "xgb", "ensemble")) else "rule_based",
-        )
+        if attendance_at_risk:
+            med_msg = (
+                f"Medium academic risk detected for {code}. "
+                "Small improvements in attendance and assessments can lower your risk."
+            )
+        else:
+            med_msg = (
+                f"Medium academic risk detected for {code}. "
+                "Small improvements in graded assessments can lower your risk."
+            )
+        add("risk", "medium", med_msg, source=risk_source)
 
     prior = float(f.get("prior_cgpa") or 0)
     if prior > 0 and prior < 2.5 and scaled < 70 and ratio >= 0.2:

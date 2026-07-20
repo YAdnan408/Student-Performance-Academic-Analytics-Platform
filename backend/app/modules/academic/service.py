@@ -342,6 +342,11 @@ class AcademicService:
             offering_id=offering_id,
             link=f"/instructor/students/attendance/{offering_id}",
         )
+        try:
+            from app.modules.intelligence.service import IntelligenceService
+            IntelligenceService().refresh_offering_by_system(db, offering_id)
+        except Exception:
+            pass
 
         return {
             "total": len(records),

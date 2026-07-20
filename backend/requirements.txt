@@ -13,3 +13,7 @@ email-validator
 bcrypt==4.0.1
 aiofiles
 reportlab
+scikit-learn
+xgboost
+numpy
+joblib

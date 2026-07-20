@@ -13,4 +13,3 @@ class Semester(Base):
 
     offerings = relationship("CourseOffering", back_populates="semester")
     gpa_records = relationship("GPARecord", back_populates="semester")
-    ml_predictions = relationship("MLPrediction", back_populates="semester")

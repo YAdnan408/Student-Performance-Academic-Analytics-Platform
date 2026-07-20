@@ -19,7 +19,13 @@ from app.models.ml_prediction import MLPrediction
 from app.models.recommendation import Recommendation
 from app.models.enums import CourseStatus
 from app.modules.admin.schema import CourseCreateRequest, CourseUpdateRequest, AssignInstructorRequest
-from app.core.exceptions import NotFoundException
+from app.modules.academic.enrollment_window import (
+    default_closes_24h_before_start,
+    enrollment_status_payload,
+    parse_iso_datetime,
+    validate_enrollment_window,
+)
+from app.core.exceptions import NotFoundException, ValidationException
 from datetime import date
 import uuid
 
@@ -52,11 +58,14 @@ def admin_list_courses(
             "duration": course.duration,
             "start_date": str(course.start_date) if course.start_date else None,
             "end_date": str(course.end_date) if course.end_date else None,
+            "enrollment_opens_at": course.enrollment_opens_at.isoformat() if course.enrollment_opens_at else None,
+            "enrollment_closes_at": course.enrollment_closes_at.isoformat() if course.enrollment_closes_at else None,
             "marks_distribution": course.marks_distribution,
             "class_schedule": course.class_schedule,
             "status": course.status,
             "instructor_name": instructor_name,
             "instructor_id": instructor_id,
+            **enrollment_status_payload(course),
         })
     return result
 
@@ -67,14 +76,24 @@ def admin_create_course(
     db: Session = Depends(get_db),
     user: User = Depends(admin_only),
 ):
+    start = date.fromisoformat(request.start_date) if request.start_date else None
+    end = date.fromisoformat(request.end_date) if request.end_date else None
+    opens = parse_iso_datetime(request.enrollment_opens_at)
+    closes = parse_iso_datetime(request.enrollment_closes_at)
+    if closes is None and start is not None:
+        closes = default_closes_24h_before_start(start)
+    validate_enrollment_window(opens=opens, closes=closes, start=start)
+
     course = Course(
         course_code=request.course_code,
         title=request.title,
         description=request.description,
         cost=request.cost,
         duration=request.duration,
-        start_date=date.fromisoformat(request.start_date) if request.start_date else None,
-        end_date=date.fromisoformat(request.end_date) if request.end_date else None,
+        start_date=start,
+        end_date=end,
+        enrollment_opens_at=opens,
+        enrollment_closes_at=closes,
         marks_distribution=request.marks_distribution,
         class_schedule=request.class_schedule,
     )
@@ -111,9 +130,24 @@ def admin_update_course(
     if request.duration is not None:
         course.duration = request.duration
     if request.start_date is not None:
-        course.start_date = date.fromisoformat(request.start_date)
+        course.start_date = date.fromisoformat(request.start_date) if request.start_date else None
     if request.end_date is not None:
-        course.end_date = date.fromisoformat(request.end_date)
+        course.end_date = date.fromisoformat(request.end_date) if request.end_date else None
+    if request.enrollment_opens_at is not None:
+        course.enrollment_opens_at = parse_iso_datetime(request.enrollment_opens_at) if request.enrollment_opens_at else None
+    if request.enrollment_closes_at is not None:
+        course.enrollment_closes_at = parse_iso_datetime(request.enrollment_closes_at) if request.enrollment_closes_at else None
+
+    # If start exists but closes still empty, default to 24h before start
+    if course.start_date and course.enrollment_closes_at is None:
+        course.enrollment_closes_at = default_closes_24h_before_start(course.start_date)
+
+    validate_enrollment_window(
+        opens=course.enrollment_opens_at,
+        closes=course.enrollment_closes_at,
+        start=course.start_date,
+    )
+
     if request.marks_distribution is not None:
         course.marks_distribution = request.marks_distribution
     if request.class_schedule is not None:

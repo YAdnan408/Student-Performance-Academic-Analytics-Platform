@@ -50,3 +50,15 @@ export function isoToBdDatetimeLocal(iso: string | null | undefined): string {
 
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}`;
 }
+
+/**
+ * Default enrollment close for new courses: 24 hours before start_date 00:00 BD
+ * → previous calendar day at 00:00 (datetime-local value).
+ */
+export function defaultEnrollmentClosesLocal(startDate: string): string {
+  if (!startDate) return '';
+  const start = new Date(`${startDate}T00:00:00+06:00`);
+  if (Number.isNaN(start.getTime())) return '';
+  start.setTime(start.getTime() - 24 * 60 * 60 * 1000);
+  return isoToBdDatetimeLocal(start.toISOString());
+}

@@ -23,6 +23,8 @@ export interface AdminInstructor {
   active_courses_count: number;
 }
 
+export type EnrollmentStatus = 'open' | 'upcoming' | 'closed';
+
 export interface AdminCourse {
   id: string;
   course_code: string;
@@ -32,6 +34,10 @@ export interface AdminCourse {
   duration: string;
   start_date: string | null;
   end_date: string | null;
+  enrollment_opens_at: string | null;
+  enrollment_closes_at: string | null;
+  enrollment_open?: boolean;
+  enrollment_status?: EnrollmentStatus;
   marks_distribution: Record<string, number> | null;
   class_schedule: Record<string, string> | null;
   status: string;
@@ -47,6 +53,8 @@ export interface CourseUpdateData {
   duration?: string;
   start_date?: string;
   end_date?: string;
+  enrollment_opens_at?: string | null;
+  enrollment_closes_at?: string | null;
   marks_distribution?: {
     mid: number;
     final: number;
@@ -70,6 +78,8 @@ export interface CourseCreateData {
   duration: string;
   start_date: string;
   end_date: string;
+  enrollment_opens_at?: string;
+  enrollment_closes_at?: string;
   marks_distribution: {
     mid: number;
     final: number;

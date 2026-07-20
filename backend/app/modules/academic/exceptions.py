@@ -21,6 +21,11 @@ class ScheduleClashException(AppException):
         super().__init__(message, status_code=409)
 
 
+class EnrollmentClosedException(AppException):
+    def __init__(self, message: str = "Enrollment is closed for this course"):
+        super().__init__(message, status_code=403)
+
+
 class InstructorNotAssignedException(AppException):
     def __init__(self, message: str = "You are not assigned to this course"):
         super().__init__(message, status_code=403)

@@ -16,6 +16,8 @@ class Course(Base):
     duration = Column(String(100))
     start_date = Column(Date)
     end_date = Column(Date)
+    enrollment_opens_at = Column(DateTime(timezone=True), nullable=True)
+    enrollment_closes_at = Column(DateTime(timezone=True), nullable=True)
     marks_distribution = Column(JSON)
     class_schedule = Column(JSON)
     status = Column(String(20), default=CourseStatus.active.value)

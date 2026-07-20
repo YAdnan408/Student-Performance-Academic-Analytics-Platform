@@ -7,6 +7,8 @@ export interface MarksDistribution {
   attendance: number;
 }
 
+export type EnrollmentStatus = 'open' | 'upcoming' | 'closed';
+
 export interface Course {
   id: string;
   course_code: string;
@@ -16,6 +18,10 @@ export interface Course {
   duration: string;
   start_date: string | null;
   end_date: string | null;
+  enrollment_opens_at?: string | null;
+  enrollment_closes_at?: string | null;
+  enrollment_open?: boolean;
+  enrollment_status?: EnrollmentStatus;
   marks_distribution: MarksDistribution | null;
   class_schedule: Record<string, string> | null;
   instructor_name: string | null;

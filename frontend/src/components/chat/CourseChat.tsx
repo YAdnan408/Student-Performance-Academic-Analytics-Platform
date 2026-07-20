@@ -148,19 +148,28 @@ const CourseChat = ({ offeringId }: CourseChatProps) => {
   }, [loadInitial]);
 
   useEffect(() => {
-    const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-    if (!token) return;
+    // Wait until REST load succeeds so axios can refresh an expired access token first.
+    if (loading || error) return;
 
     let closed = false;
     let retryTimer: ReturnType<typeof setTimeout> | null = null;
 
     const connect = () => {
       if (closed) return;
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      if (!token) {
+        retryTimer = setTimeout(connect, 2500);
+        return;
+      }
+      if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
+        return;
+      }
       const ws = new WebSocket(chatService.buildWsUrl(offeringId, token));
       wsRef.current = ws;
       ws.onopen = () => setConnected(true);
       ws.onclose = () => {
         setConnected(false);
+        wsRef.current = null;
         if (!closed) retryTimer = setTimeout(connect, 2500);
       };
       ws.onerror = () => {
@@ -181,14 +190,24 @@ const CourseChat = ({ offeringId }: CourseChatProps) => {
         } catch { /* ignore */ }
       };
     };
+
+    const onTokenRefresh = () => {
+      try { wsRef.current?.close(); } catch { /* ignore */ }
+      wsRef.current = null;
+      if (retryTimer) clearTimeout(retryTimer);
+      connect();
+    };
+
     connect();
+    window.addEventListener('auth-token-refreshed', onTokenRefresh);
     return () => {
       closed = true;
       if (retryTimer) clearTimeout(retryTimer);
+      window.removeEventListener('auth-token-refreshed', onTokenRefresh);
       wsRef.current?.close();
       wsRef.current = null;
     };
-  }, [offeringId, upsertMessage, scrollToBottom]);
+  }, [loading, error, offeringId, upsertMessage, scrollToBottom]);
 
   useEffect(() => {
     return () => {

@@ -67,6 +67,9 @@ api.interceptors.response.use(
 
         localStorage.setItem('token', access_token);
         localStorage.setItem('refresh_token', new_refresh_token);
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('auth-token-refreshed'));
+        }
 
         processQueue(null, access_token);
 

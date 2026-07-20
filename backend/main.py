@@ -9,6 +9,7 @@ from app.modules.admin.router import router as admin_router
 from app.modules.analytics.router import router as analytics_router
 from app.modules.reporting.router import router as reporting_router
 from app.modules.intelligence.router import router as intelligence_router
+from app.modules.chat.router import router as chat_router
 from app.core.config import settings
 
 app = FastAPI(title="Student Academics API")
@@ -32,6 +33,7 @@ app.include_router(admin_router)
 app.include_router(analytics_router)
 app.include_router(reporting_router)
 app.include_router(intelligence_router)
+app.include_router(chat_router)
 
 # Mount uploads directory for static file serving
 settings.UPLOADS_DIR.mkdir(parents=True, exist_ok=True)

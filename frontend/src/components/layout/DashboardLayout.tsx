@@ -5,6 +5,7 @@ import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import Footer from './Footer';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import ChatInboxFab from '@/components/chat/ChatInboxFab';
 import { UserRole } from '@/types/auth';
 
 interface DashboardLayoutProps {
@@ -24,6 +25,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, allowedRole
           </main>
           <Footer />
         </div>
+        <ChatInboxFab />
       </div>
     </ProtectedRoute>
   );

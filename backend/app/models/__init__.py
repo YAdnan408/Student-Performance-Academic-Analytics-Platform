@@ -17,6 +17,8 @@ from .activity import Activity
 from .gpa_record import GPARecord
 from .ml_prediction import MLPrediction
 from .recommendation import Recommendation
+from .chat_message import ChatMessage
+from .chat_channel_read import ChatChannelRead
 from .report import Report
 from .department_analytics import DepartmentAnalytics
 from .program import Program

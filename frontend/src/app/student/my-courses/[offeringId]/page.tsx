@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import Card from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
@@ -10,8 +10,9 @@ import Badge from '@/components/ui/Badge';
 import { formatBdDateTime } from '@/lib/datetime';
 import { gradesService } from '@/services/gradesService';
 import { Assessment, CourseMaterial, OfferingHub, StudentCourseGrade } from '@/types/grades';
+import CourseChat from '@/components/chat/CourseChat';
 
-type Tab = 'materials' | 'assessments' | 'grades';
+type Tab = 'materials' | 'assessments' | 'grades' | 'chat';
 
 const TYPE_LABELS: Record<string, string> = {
   quiz: 'Quiz',
@@ -25,14 +26,27 @@ const TYPE_LABELS: Record<string, string> = {
 const StudentCourseHubPage = () => {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const offeringId = params.offeringId as string;
 
-  const [tab, setTab] = useState<Tab>('materials');
+  const initialTab = (searchParams.get('tab') as Tab | null);
+  const [tab, setTab] = useState<Tab>(
+    initialTab && ['materials', 'assessments', 'grades', 'chat'].includes(initialTab)
+      ? initialTab
+      : 'materials',
+  );
   const [hub, setHub] = useState<OfferingHub | null>(null);
   const [materials, setMaterials] = useState<CourseMaterial[]>([]);
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [grades, setGrades] = useState<StudentCourseGrade | null>(null);
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const t = searchParams.get('tab') as Tab | null;
+    if (t && ['materials', 'assessments', 'grades', 'chat'].includes(t)) {
+      setTab(t);
+    }
+  }, [searchParams]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -90,6 +104,7 @@ const StudentCourseHubPage = () => {
             { id: 'materials' as Tab, label: 'Materials' },
             { id: 'assessments' as Tab, label: 'Assessments' },
             { id: 'grades' as Tab, label: 'Grades' },
+            { id: 'chat' as Tab, label: 'Chat' },
           ]).map((t) => (
             <button
               key={t.id}
@@ -221,6 +236,8 @@ const StudentCourseHubPage = () => {
             </div>
           </Card>
         )}
+
+        {tab === 'chat' && <CourseChat offeringId={offeringId} />}
       </div>
     </DashboardLayout>
   );
